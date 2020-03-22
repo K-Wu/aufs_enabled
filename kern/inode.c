@@ -119,12 +119,12 @@ static int aufs_readpages(struct file *file, struct address_space *mapping,
 	return mpage_readpages(mapping, pages, nr_pages, aufs_get_block);
 }
 
-static ssize_t aufs_direct_io(int rw, struct kiocb *iocb,
-			struct iov_iter *iter, loff_t off)
+static ssize_t aufs_direct_io(/*int rw,*/ struct kiocb *iocb,
+			struct iov_iter *iter/*, loff_t off*/)
 {
 	struct inode *inode = file_inode(iocb->ki_filp);
 
-	return blockdev_direct_IO(rw, iocb, inode, iter, off, aufs_get_block);
+	return blockdev_direct_IO(/*rw,*/ iocb, inode, iter, /*off,*/ aufs_get_block);
 }
 
 const struct address_space_operations aufs_aops = {

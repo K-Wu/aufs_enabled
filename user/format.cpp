@@ -104,9 +104,10 @@ uint32_t SuperBlock::AllocateInode() noexcept
 		*it = false;
 		return static_cast<size_t>(it - b);
 	}
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
 	throw std::runtime_error("Cannot allocate inode");
-
+#pragma GCC diagnostic pop
 	return 0;
 }
 
@@ -125,8 +126,10 @@ uint32_t SuperBlock::AllocateBlocks(size_t blocks) noexcept
 		it = jt;
 	}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
 	throw std::runtime_error("Cannot allocate blocks");
-
+#pragma GCC diagnostic pop
 	return 0;
 }
 

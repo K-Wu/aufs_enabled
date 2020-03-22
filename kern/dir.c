@@ -14,18 +14,18 @@ static size_t aufs_dir_pages(struct inode *inode)
 {
 	size_t size = aufs_dir_offset(inode->i_size);
 
-	return (size + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+	return (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
 }
 
 static size_t aufs_dir_entry_page(size_t idx)
 {
-	return aufs_dir_offset(idx) >> PAGE_CACHE_SHIFT;
+	return aufs_dir_offset(idx) >> PAGE_SHIFT;
 }
 
 static inline size_t aufs_dir_entry_offset(size_t idx)
 {
 	return aufs_dir_offset(idx) -
-			(aufs_dir_entry_page(idx) << PAGE_CACHE_SHIFT);
+			(aufs_dir_entry_page(idx) << PAGE_SHIFT);
 }
 
 static struct page *aufs_get_page(struct inode *inode, size_t n)
@@ -73,7 +73,7 @@ static int aufs_iterate(struct inode *inode, struct dir_context *ctx)
 
 		kaddr = page_address(page);
 		de = (struct aufs_disk_dir_entry *)(kaddr + off);
-		while (off < PAGE_CACHE_SIZE && ctx->pos < inode->i_size) {
+		while (off < PAGE_SIZE && ctx->pos < inode->i_size) {
 			if (!aufs_dir_emit(ctx, de)) {
 				aufs_put_page(page);
 				return 0;
