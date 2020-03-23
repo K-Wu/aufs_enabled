@@ -104,9 +104,10 @@ uint32_t SuperBlock::AllocateInode() noexcept
 		*it = false;
 		return static_cast<size_t>(it - b);
 	}
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
 	throw std::runtime_error("Cannot allocate inode");
-
+#pragma GCC diagnostic pop
 	return 0;
 }
 
@@ -149,12 +150,16 @@ void SuperBlock::FillSuper(BlocksCache &cache) noexcept
 	ASB_BLOCK_SIZE(sb) = htonl(cache.Config()->BlockSize());
 	ASB_ROOT_INODE(sb) = 0;
 	ASB_INODE_BLOCKS(sb) = htonl(cache.Config()->InodeBlocks());
+	ASB_INODE_MAP_BLOCKS(sb) = 1;//todo: support multiple-block inode maps
+	ASB_BLOCK_MAP_BLOCKS(sb) = 1;//todo: support multiple-block zone maps
+	ASB_BLOCK_PER_ZONE(sb) = 1;//todo: support non-1 block per zone
 }
 
 void SuperBlock::FillBlockMap(BlocksCache &cache) noexcept
 {
 	size_t const blocks = std::min(cache.Config()->Blocks(),
 		cache.Config()->BlockSize() * 8);
+	//size_t const blocks= cache.Config()->Blocks();//todo: support multiple-block zone maps
 	size_t const inode_blocks = cache.Config()->InodeBlocks();
 
 	BitIterator const it(m_block_map->Data(), 0);
@@ -169,7 +174,7 @@ void SuperBlock::FillInodeMap(BlocksCache &cache) noexcept
 		cache.Config()->BlockSize() / sizeof(struct aufs_inode);
 	uint32_t const inode_blocks = cache.Config()->InodeBlocks();
 	uint32_t const inodes = std::min(inode_blocks * in_block,
-		cache.Config()->BlockSize() * 8);
+		cache.Config()->BlockSize() * 8);//todo: support multiple-block zone maps
 
 	BitIterator const it(m_inode_map->Data(), 0);
 	std::fill(it, it + 1, false);

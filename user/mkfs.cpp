@@ -145,7 +145,8 @@ Inode CopyDir(Formatter &fmt, std::string const &path)
 		throw std::runtime_error("cannot open dir");
 
 	while (entryp) {
-		readdir_r(dirp.get(), &entry, &entryp);
+		//readdir_r(dirp.get(), &entry, &entryp);
+		readdir(dirp.get());
 		if (entryp && strcmp(entry.d_name, ".")
 				&& strcmp(entry.d_name, ".."))
 			entries.push_back(std::string(entry.d_name)

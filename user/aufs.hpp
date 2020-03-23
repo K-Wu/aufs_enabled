@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstring>
 #include <cstdint>
+//#include "../kern/aufs.h"
 
 static uint32_t const AUFS_MAGIC = 0x13131313;
 static uint32_t const AUFS_NAME_MAXLEN = 28;
@@ -13,6 +14,9 @@ struct aufs_super_block {
 	uint32_t	asb_block_size;
 	uint32_t	asb_root_inode;
 	uint32_t	asb_inode_blocks;
+	uint32_t asb_inode_map_blocks;
+	uint32_t asb_zone_map_blocks;
+	uint32_t asb_blocks_per_zone;
 };
 
 static inline uint32_t & ASB_MAGIC(struct aufs_super_block *asb)
@@ -26,6 +30,17 @@ static inline uint32_t & ASB_ROOT_INODE(struct aufs_super_block *asb)
 
 static inline uint32_t & ASB_INODE_BLOCKS(struct aufs_super_block *asb)
 { return asb->asb_inode_blocks; }
+
+static inline uint32_t & ASB_INODE_MAP_BLOCKS(struct aufs_super_block *asb)
+{ return asb->asb_inode_map_blocks; }
+
+static inline uint32_t & ASB_BLOCK_MAP_BLOCKS(struct aufs_super_block *asb)
+{ return asb->asb_zone_map_blocks; }
+
+static inline uint32_t & ASB_BLOCK_PER_ZONE(struct aufs_super_block *asb)
+{ return asb->asb_blocks_per_zone; }
+
+
 
 
 struct aufs_inode {

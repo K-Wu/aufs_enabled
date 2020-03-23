@@ -5,19 +5,25 @@
 #include <linux/slab.h>
 
 #include "aufs.h"
-
+#include "minix.h"
 static void aufs_put_super(struct super_block *sb)
 {
 	struct aufs_super_block *asb = AUFS_SB(sb);
-
+	unsigned long i;
 	if (asb)
 		kfree(asb);
 	sb->s_fs_info = NULL;
+	for (i = 0; i < asb->asb_inode_map_blocks; i++)
+		brelse(asb->s_imap[i]);
+	for (i = 0; i < asb->asb_zone_map_blocks; i++)
+		brelse(asb->s_zmap[i]);
+	kfree(asb->s_zmap);
 	pr_debug("aufs super block destroyed\n");
 }
 
 static struct super_operations const aufs_super_ops = {
 	.alloc_inode = aufs_inode_alloc,
+	.write_inode	= minix_write_inode,
 	.destroy_inode = aufs_inode_free,
 	.put_super = aufs_put_super,
 };
@@ -29,8 +35,11 @@ static inline void aufs_super_block_fill(struct aufs_super_block *asb,
 	asb->asb_inode_blocks = be32_to_cpu(dsb->dsb_inode_blocks);
 	asb->asb_block_size = be32_to_cpu(dsb->dsb_block_size);
 	asb->asb_root_inode = be32_to_cpu(dsb->dsb_root_inode);
+	asb->asb_inode_map_blocks = be32_to_cpu(dsb->dsb_inode_map_blocks);
+	asb->asb_zone_map_blocks = be32_to_cpu(dsb->dsb_zone_map_blocks);
 	asb->asb_inodes_in_block =
 		asb->asb_block_size / sizeof(struct aufs_disk_inode);
+	asb->asb_blocks_per_zone = be32_to_cpu(dsb->dsb_blocks_per_zone);
 }
 
 static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
@@ -39,7 +48,9 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 			kzalloc(sizeof(struct aufs_super_block), GFP_NOFS);
 	struct aufs_disk_super_block *dsb;
 	struct buffer_head *bh;
-
+	unsigned long i;
+	unsigned long block;
+	struct buffer_head ** map;
 	if (!asb) {
 		pr_err("aufs cannot allocate super block\n");
 		return NULL;
@@ -48,17 +59,42 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 	bh = sb_bread(sb, 0);
 	if (!bh) {
 		pr_err("cannot read 0 block\n");
-		goto free_memory;
+		goto out;
 	}
 
 	dsb = (struct aufs_disk_super_block *)bh->b_data;
 	aufs_super_block_fill(asb, dsb);
 	brelse(bh);
 
+	//this setup the in-memory zone map and inode map
+	i = (asb->asb_zone_map_blocks + asb->asb_inode_map_blocks) * sizeof(bh);
+	map = kzalloc(i, GFP_KERNEL);
+	if (!map)
+		goto out_no_map;
+		
+	asb->s_zmap = &map[0];
+	asb->s_imap = &map[asb->asb_zone_map_blocks];
+
+	block=1;
+	
+	for (i=0 ; i < asb->asb_zone_map_blocks ; i++) {
+		if (!(asb->s_zmap[i]=sb_bread(sb, block)))//vtodo: verify done: sb_brels when put_super and deal with 
+			goto out_no_bitmap;
+		block++;
+	}
+	for (i=0 ; i < asb->asb_inode_map_blocks ; i++) {
+		if (!(asb->s_imap[i]=sb_bread(sb, block)))
+			goto out_no_bitmap;
+		block++;
+	}
+	minix_set_bit(0,asb->s_zmap[0]->b_data);
+	minix_set_bit(0,asb->s_imap[0]->b_data);
+	//this ends the setup the in-memory zone map and inode map
+
 	if (asb->asb_magic != AUFS_MAGIC) {
 		pr_err("wrong magic number %lu\n",
 			(unsigned long)asb->asb_magic);
-		goto free_memory;
+		goto out;
 	}
 
 	pr_debug("aufs super block info:\n"
@@ -75,9 +111,30 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 
 	return asb;
 
-free_memory:
+out_no_bitmap:
+	printk("MINIX-fs: bad superblock or unable to read bitmaps\n");
+out_freemap:
+	for (i = 0; i < asb->asb_inode_map_blocks; i++)
+		brelse(asb->s_imap[i]);
+	for (i = 0; i < asb->asb_zone_map_blocks; i++)
+		brelse(asb->s_zmap[i]);
+	kfree(asb->s_zmap);
+	goto out_release;
+
+out_no_map:
+	//ret = -ENOMEM; //todo: support return val
+	//if (!silent)
+		printk("MINIX-fs: can't allocate map\n");
+	goto out_release;
+out_release:
+	brelse(bh);
+	goto out;
+
+out:
+	//s->s_fs_info = NULL;
 	kfree(asb);
 	return NULL;
+
 }
 
 static int aufs_fill_sb(struct super_block *sb, void *data, int silent)
