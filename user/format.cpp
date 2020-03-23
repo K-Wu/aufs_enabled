@@ -126,8 +126,10 @@ uint32_t SuperBlock::AllocateBlocks(size_t blocks) noexcept
 		it = jt;
 	}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
 	throw std::runtime_error("Cannot allocate blocks");
-
+#pragma GCC diagnostic pop
 	return 0;
 }
 

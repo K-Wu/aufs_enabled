@@ -23,3 +23,13 @@
 *.hex
 .vscode/
 logs/
+
+.idea/
+
+*.ko.cmd
+*.o.cmd
+.tmp_versions/
+Module.symvers
+*.mod.c
+modules.order
+mkfs.aufs
