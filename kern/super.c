@@ -10,6 +10,7 @@ static void aufs_put_super(struct super_block *sb)
 {
 	struct aufs_super_block *asb = AUFS_SB(sb);
 	unsigned long i;
+	mark_buffer_dirty(asb->s_sbh);
 	if (asb)
 		kfree(asb);
 	sb->s_fs_info = NULL;
@@ -21,8 +22,11 @@ static void aufs_put_super(struct super_block *sb)
 	pr_debug("aufs super block destroyed\n");
 }
 
+
+
 static struct super_operations const aufs_super_ops = {
 	.alloc_inode = aufs_inode_alloc,
+	//.free_inode = aufs_inode_free,
 	.write_inode	= minix_write_inode,
 	.destroy_inode = aufs_inode_free,
 	.put_super = aufs_put_super,
@@ -64,9 +68,11 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 
 	dsb = (struct aufs_disk_super_block *)bh->b_data;
 	aufs_super_block_fill(asb, dsb);
+	asb->s_sbh=bh;
 	brelse(bh);
 
 	//this setup the in-memory zone map and inode map
+	pr_debug("asb->asb_zone_map_blocks %lu,  asb->asb_inode_map_blocks %lu\n",asb->asb_zone_map_blocks, asb->asb_inode_map_blocks);
 	i = (asb->asb_zone_map_blocks + asb->asb_inode_map_blocks) * sizeof(bh);
 	map = kzalloc(i, GFP_KERNEL);
 	if (!map)
@@ -102,12 +108,18 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 		"\tinode blocks    = %lu\n"
 		"\tblock size      = %lu\n"
 		"\troot inode      = %lu\n"
-		"\tinodes in block = %lu\n",
+		"\tinodes in block = %lu\n"
+		"\tblocks per zone = %lu\n"
+		"\tinode map blocks = %lu\n"
+		"\tzone map blocks = %lu\n",
 		(unsigned long)asb->asb_magic,
 		(unsigned long)asb->asb_inode_blocks,
 		(unsigned long)asb->asb_block_size,
 		(unsigned long)asb->asb_root_inode,
-		(unsigned long)asb->asb_inodes_in_block);
+		(unsigned long)asb->asb_inodes_in_block,
+		(unsigned long)asb->asb_blocks_per_zone,
+		(unsigned long)asb->asb_inode_map_blocks,
+		(unsigned long)asb->asb_zone_map_blocks);
 
 	return asb;
 
@@ -148,6 +160,9 @@ static int aufs_fill_sb(struct super_block *sb, void *data, int silent)
 	sb->s_magic = asb->asb_magic;
 	sb->s_fs_info = asb;
 	sb->s_op = &aufs_super_ops;
+	
+	//sb->s_time_min = 0;
+	//sb->s_time_max = U32_MAX;
 
 	if (sb_set_blocksize(sb, asb->asb_block_size) == 0) {
 		pr_err("device does not support block size %lu\n",
@@ -189,7 +204,10 @@ static struct file_system_type aufs_type = {
 };
 
 static struct kmem_cache *aufs_inode_cache;
-
+static void minix_free_in_core_inode(struct inode *inode)
+{
+	kmem_cache_free(aufs_inode_cache, AUFS_INODE(inode));
+}
 struct inode *aufs_inode_alloc(struct super_block *sb)
 {
 	struct aufs_inode *inode = (struct aufs_inode *)

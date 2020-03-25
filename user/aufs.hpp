@@ -7,7 +7,7 @@
 //#include "../kern/aufs.h"
 
 static uint32_t const AUFS_MAGIC = 0x13131313;
-static uint32_t const AUFS_NAME_MAXLEN = 28;
+static uint32_t const AUFS_NAME_MAXLEN = 60;
 
 struct aufs_super_block {
 	uint32_t	asb_magic;
@@ -75,18 +75,26 @@ static inline uint64_t & AI_CTIME(struct aufs_inode *ai)
 { return ai->ai_ctime; }
 
 
-struct aufs_dir_entry {
-	char 		ade_name[AUFS_NAME_MAXLEN];
-	uint32_t	ade_inode;
+// struct aufs_dir_entry {
+// 	char 		ade_name[AUFS_NAME_MAXLEN];
+// 	uint32_t	ade_inode;
+// };
+
+static const unsigned long AUFS_DIR_SIZE = 64;
+
+struct aufs_disk_dir_entry {
+	uint32_t dde_inode;
+	char dde_name[AUFS_DIR_SIZE-sizeof(uint32_t)];//AUFS_DDE_MAX_NAME_LEN];
 };
 
-static inline uint32_t & ADE_INODE(struct aufs_dir_entry *ade)
-{ return ade->ade_inode; }
 
-static inline char const * ADE_NAME(struct aufs_dir_entry const *ade)
-{ return ade->ade_name; }
+static inline uint32_t & ADE_INODE(struct aufs_disk_dir_entry *ade)
+{ return ade->dde_inode; }
 
-static inline char * ADE_NAME(struct aufs_dir_entry *ade)
-{ return ade->ade_name; }
+static inline char const * ADE_NAME(struct aufs_disk_dir_entry const *ade)
+{ return ade->dde_name; }
+
+static inline char * ADE_NAME(struct aufs_disk_dir_entry *ade)
+{ return ade->dde_name; }
 
 #endif /*__AUFS_HPP__*/

@@ -33,20 +33,6 @@ static void aufs_inode_fill(struct aufs_inode *ai,
 	i_gid_write(&ai->ai_inode, (gid_t)be32_to_cpu(di->di_gid));
 }
 
-static inline sector_t aufs_inode_block(struct aufs_super_block const *asb,
-			ino_t inode_no)
-{
-	return (sector_t)(1+asb->asb_inode_map_blocks+asb->asb_zone_map_blocks + inode_no / asb->asb_inodes_in_block);
-}
-
-static size_t aufs_inode_offset(struct aufs_super_block const *asb,
-			ino_t inode_no)
-{
-	return sizeof(struct aufs_disk_inode) *
-				(inode_no % asb->asb_inodes_in_block);
-}
-
-
 
 
 /*
@@ -62,16 +48,16 @@ static struct buffer_head * V2_minix_update_inode(struct inode * inode)//vtodo: 
 	raw_inode = minix_V2_raw_inode(inode->i_sb, inode->i_ino, &bh);
 	if (!raw_inode)
 		return NULL;
-	raw_inode->di_mode = inode->i_mode;
-	raw_inode->di_uid = fs_high2lowuid(i_uid_read(inode));
-	raw_inode->di_gid = fs_high2lowgid(i_gid_read(inode));
+	raw_inode->di_mode = htonl(inode->i_mode);
+	raw_inode->di_uid = htonl(fs_high2lowuid(i_uid_read(inode)));
+	raw_inode->di_gid = htonl(fs_high2lowgid(i_gid_read(inode)));
 	//raw_inode->i_nlinks = inode->i_nlink; //todo: add aufs_disk_inode field support
-	raw_inode->di_size = inode->i_size;
-	raw_inode->di_blocks = (raw_inode->di_size+inode->i_sb->s_blocksize-1)/(inode->i_sb->s_blocksize);
+	raw_inode->di_size = htonl(inode->i_size);
+	raw_inode->di_blocks = htonl((raw_inode->di_size+inode->i_sb->s_blocksize-1)/(inode->i_sb->s_blocksize));
 	//raw_inode->i_mtime = inode->i_mtime.tv_sec; //todo: add aufs_disk_inode field support
 	//raw_inode->i_atime = inode->i_atime.tv_sec; //todo: add aufs_disk_inode field support
-	raw_inode->di_ctime = inode->i_ctime.tv_sec;
-	raw_inode->di_first = aufs_inode->ai_first_block;
+	raw_inode->di_ctime = cpu_to_be64(inode->i_ctime.tv_sec);
+	raw_inode->di_first = htonl(aufs_inode->ai_first_block);
 	//todo: need to update the first block pointer
 	// if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
 	// 	raw_inode->i_zone[0] = old_encode_dev(inode->i_rdev);
@@ -85,12 +71,31 @@ int minix_write_inode(struct inode *inode, struct writeback_control *wbc)//vtodo
 {
 	int err = 0;
 	struct buffer_head *bh;
-
+	pr_debug("write inode %lu\n",inode->i_ino);
+	printk("minix_write_inode %lu info:\n"
+		"\tsize   = %lu\n"
+		"\tfirst_block  = %lu\n"
+		"\tblocks = %lu\n"
+		"\tuid    = %lu\n"
+		"\tgid    = %lu\n"
+		"\tmode   = %lo\n"
+		"\tisDirectory = %d\n",
+				(unsigned long)inode->i_ino,
+				(unsigned long)inode->i_size,
+				(unsigned long)AUFS_INODE(inode)->ai_first_block,
+				(unsigned long)inode->i_blocks,
+				(unsigned long)i_uid_read(inode),
+				(unsigned long)i_gid_read(inode),
+				(unsigned long)inode->i_mode,
+				(int) S_ISDIR(inode->i_mode));
 	bh = V2_minix_update_inode(inode);
-	if (!bh)
+	if (!bh){
+		printk("minix_write_inode !bh\n");
 		return -EIO;
+		}
 	if (wbc->sync_mode == WB_SYNC_ALL && buffer_dirty(bh)) {
 		sync_dirty_buffer(bh);
+		printk("minix_write_inode  sync_dirty_buffer bh\n");
 		if (buffer_req(bh) && !buffer_uptodate(bh)) {
 			printk("IO error syncing minix inode [%s:%08lx]\n",
 				inode->i_sb->s_id, inode->i_ino);
@@ -122,7 +127,7 @@ struct inode *aufs_inode_get(struct super_block *sb, ino_t no)
 	block = aufs_inode_block(asb, no);
 	offset = aufs_inode_offset(asb, no);
 
-	pr_debug("aufs reads inode %lu from %lu block with offset %lu\n",
+	pr_debug("aufs_inode_get %lu from %lu block with offset %lu\n",
 		(unsigned long)no, (unsigned long)block, (unsigned long)offset);
 
 	bh = sb_bread(sb, block);
@@ -148,20 +153,22 @@ struct inode *aufs_inode_get(struct super_block *sb, ino_t no)
 	else
 		goto read_error;
 
-	pr_debug("aufs inode %lu info:\n"
+	pr_debug("aufs_inode_get %lu info:\n"
 		"\tsize   = %lu\n"
 		"\tfirst_block  = %lu\n"
 		"\tblocks = %lu\n"
 		"\tuid    = %lu\n"
 		"\tgid    = %lu\n"
-		"\tmode   = %lo\n",
+		"\tmode   = %lo\n"
+		"\tisDirectory = %d\n",
 				(unsigned long)inode->i_ino,
 				(unsigned long)inode->i_size,
 				(unsigned long)ai->ai_first_block,
 				(unsigned long)inode->i_blocks,
 				(unsigned long)i_uid_read(inode),
 				(unsigned long)i_gid_read(inode),
-				(unsigned long)inode->i_mode);
+				(unsigned long)inode->i_mode,
+				(int) S_ISDIR(inode->i_mode));
 
 	unlock_new_inode(inode);
 
@@ -205,11 +212,14 @@ int minix_set_inode(struct inode *inode, dev_t rdev)
 
 static int aufs_readpage(struct file *file, struct page *page)
 {
+	
+	pr_debug("aufs_readpage\n");
 	return block_read_full_page(page, aufs_get_block);
 }
 
 static int aufs_writepage(/*struct file *file, */struct page *page, struct writeback_control *wbc)
 {
+	pr_debug("aufs_writepage\n");
 	return block_write_full_page(page, aufs_get_block, wbc);
 }
 
@@ -251,6 +261,19 @@ static int minix_write_begin(struct file *file, struct address_space *mapping,
 
 // 	return blockdev_direct_IO(rw, iocb, inode, iter, off, aufs_get_block);
 // }
+
+int minix_getattr(const struct path *path, struct kstat *stat,
+		  u32 request_mask, unsigned int flags)
+{
+	struct super_block *sb = path->dentry->d_sb;
+	struct inode *inode = d_inode(path->dentry);
+
+	generic_fillattr(inode, stat);
+
+	stat->blocks = (sb->s_blocksize / 512) * V2_minix_blocks(stat->size, sb);
+	stat->blksize = sb->s_blocksize;
+	return 0;
+}
 
 const struct address_space_operations aufs_aops = {
 	.readpage = aufs_readpage,

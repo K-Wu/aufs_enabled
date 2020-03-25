@@ -175,11 +175,11 @@ int main(int argc, char **argv)
 		ConfigurationConstPtr config = ParseArgs(argc - 1, argv + 1);
 		Formatter format(config);
 
-		if (!config->SourceDir().empty())
-			format.SetRootInode(CopyDir(format,
-						config->SourceDir()));
-		else
-			format.SetRootInode(format.MkDir(16));
+		//if (!config->SourceDir().empty())
+		//		format.SetRootInode(CopyDir(format,
+		//				config->SourceDir()));
+		//else
+			format.SetRootInode(format.MkRootDir());
 
 		return 0;
 	} catch (std::exception const & e) {

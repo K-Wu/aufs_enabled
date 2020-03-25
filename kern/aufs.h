@@ -48,6 +48,7 @@ struct aufs_super_block {
 	unsigned long asb_blocks_per_zone;//todo: assert unsigned long is 32 bit
 	struct buffer_head** s_zmap;
 	struct buffer_head** s_imap;//vtodo: verify done: read bitmap to initialize s_imap
+	struct buffer_head* s_sbh;
 };
 
 static inline struct aufs_super_block *AUFS_SB(struct super_block *sb)
@@ -64,6 +65,22 @@ static inline struct aufs_inode *AUFS_INODE(struct inode *inode)
 {
 	return (struct aufs_inode *)inode;
 }
+
+static inline sector_t aufs_inode_block(struct aufs_super_block const *asb,
+			ino_t inode_no)
+{
+	return (sector_t)(1+asb->asb_inode_map_blocks+asb->asb_zone_map_blocks + inode_no / asb->asb_inodes_in_block); //todo: add bitmap to disk
+}
+
+static inline size_t aufs_inode_offset(struct aufs_super_block const *asb,
+			ino_t inode_no)
+{
+	return sizeof(struct aufs_disk_inode) *
+				(inode_no % asb->asb_inodes_in_block);//todo: support undivided inode size if it is undivided
+}
+
+
+
 
 extern const struct address_space_operations aufs_aops;
 extern const struct inode_operations aufs_dir_inode_ops;
@@ -86,5 +103,12 @@ extern struct inode *aufs_new_inode(const struct inode *dir, umode_t mode, int *
 extern int minix_set_inode(struct inode *inode, dev_t rdev);
 extern int minix_prepare_chunk(struct page *page, loff_t pos, unsigned len);
 extern int minix_add_link(struct dentry *dentry, struct inode *inode);
-
+extern unsigned V2_minix_blocks(loff_t size, struct super_block *sb);
+extern int minix_getattr(const struct path *path, struct kstat *stat, u32 request_mask, unsigned int flags);
+extern int minix_make_empty(struct inode *inode, struct inode *dir);
+extern int minix_mkdir(struct inode * dir, struct dentry *dentry, umode_t mode);
+extern struct aufs_disk_dir_entry *minix_find_entry(struct dentry *dentry, struct page **res_page);
+extern ino_t minix_inode_by_name(struct dentry *dentry);
+extern struct dentry *minix_lookup(struct inode * dir, struct dentry *dentry, unsigned int flags);
+extern int minix_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode);
 #endif /*__AUFS_H__*/

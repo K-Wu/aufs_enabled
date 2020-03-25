@@ -28,6 +28,7 @@ public:
 	void SetMode(uint32_t mode) noexcept;
 
 	uint64_t CreateTime() const noexcept;
+	void SetCreateTime(uint64_t ctime) noexcept;
 
 private:
 	void FillInode(BlocksCache &cache);
@@ -71,7 +72,7 @@ public:
 	uint32_t Write(Inode &inode, uint8_t const *data, uint32_t size);
 
 	void AddChild(Inode &inode, char const *name, Inode const &ch);
-
+	Inode MkRootDir();
 private:
 	ConfigurationConstPtr	m_config;
 	BlocksCache		m_cache;

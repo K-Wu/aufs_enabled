@@ -3,7 +3,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
+#include <time.h>
 #include "bit_iterator.hpp"
 #include "format.hpp"
 
@@ -70,12 +70,14 @@ void Inode::SetMode(uint32_t mode) noexcept
 uint64_t Inode::CreateTime() const noexcept
 { return ntohll(AI_CTIME(m_raw)); }
 
+void Inode::SetCreateTime(uint64_t ctime) noexcept
+{ AI_CTIME(m_raw) = ntohll(ctime);}
 
 void Inode::FillInode(BlocksCache &cache)
 {
 	ConfigurationConstPtr const config = cache.Config();
 	size_t const in_block = config->BlockSize() / sizeof(struct aufs_inode);
-	size_t const block = InodeNo() / in_block + 3;
+	size_t const block = InodeNo() / in_block + 3;//todo: modify according to 1+zoneMap+blockMap+inodeMap
 	size_t const index = InodeNo() % in_block;
 	size_t const offset = index * sizeof(struct aufs_inode);
 
@@ -99,9 +101,9 @@ uint32_t SuperBlock::AllocateInode() noexcept
 	BitIterator const e(m_inode_map->Data() + m_inode_map->Size() * 8, 0);
 	BitIterator const b(m_inode_map->Data(), 0);
 
-	BitIterator it = std::find(b, e, true);
+	BitIterator it = std::find(b, e, false);
 	if (it != e) {
-		*it = false;
+		*it = true;
 		return static_cast<size_t>(it - b);
 	}
 #pragma GCC diagnostic push
@@ -116,11 +118,11 @@ uint32_t SuperBlock::AllocateBlocks(size_t blocks) noexcept
 	BitIterator const e(m_block_map->Data() + m_block_map->Size() * 8, 0);
 	BitIterator const b(m_block_map->Data(), 0);
 
-	BitIterator it = std::find(b, e, true);
+	BitIterator it = std::find(b, e, false);
 	while (it != e) {
-		BitIterator jt = std::find(it, e, false);
+		BitIterator jt = std::find(it, e, true);
 		if (static_cast<size_t>(jt - it) >= blocks) {
-			std::fill(it, it + blocks, false);
+			std::fill(it, it + blocks, true);
 			return it - b;
 		}
 		it = jt;
@@ -150,11 +152,11 @@ void SuperBlock::FillSuper(BlocksCache &cache) noexcept
 
 	ASB_MAGIC(sb) = htonl(AUFS_MAGIC);
 	ASB_BLOCK_SIZE(sb) = htonl(cache.Config()->BlockSize());
-	ASB_ROOT_INODE(sb) = 0;
+	ASB_ROOT_INODE(sb) = htonl(-1);
 	ASB_INODE_BLOCKS(sb) = htonl(cache.Config()->InodeBlocks());
-	ASB_INODE_MAP_BLOCKS(sb) = 1;//todo: support multiple-block inode maps
-	ASB_BLOCK_MAP_BLOCKS(sb) = 1;//todo: support multiple-block zone maps
-	ASB_BLOCK_PER_ZONE(sb) = 1;//todo: support non-1 block per zone
+	ASB_INODE_MAP_BLOCKS(sb) = htonl(1);//todo: support multiple-block inode maps
+	ASB_BLOCK_MAP_BLOCKS(sb) = htonl(1);//todo: support multiple-block zone maps
+	ASB_BLOCK_PER_ZONE(sb) = htonl(1);//todo: support non-1 block per zone
 }
 
 void SuperBlock::FillBlockMap(BlocksCache &cache) noexcept
@@ -165,9 +167,9 @@ void SuperBlock::FillBlockMap(BlocksCache &cache) noexcept
 	size_t const inode_blocks = cache.Config()->InodeBlocks();
 
 	BitIterator const it(m_block_map->Data(), 0);
-	std::fill(it, it + 3 + inode_blocks, false);
-	std::fill(it + 3 + inode_blocks, it + blocks, true);
-	std::fill(it + blocks, it + cache.Config()->BlockSize() * 8, false); 
+	std::fill(it, it + 3 + inode_blocks+2, true);//todo: support multiple-block zone maps
+	std::fill(it + 3 + inode_blocks+2, it + blocks, false);//2: 1 fore root inode and 1 for badblock
+	std::fill(it + blocks, it + cache.Config()->BlockSize() * 8, true); 
 }
 
 void SuperBlock::FillInodeMap(BlocksCache &cache) noexcept
@@ -179,9 +181,9 @@ void SuperBlock::FillInodeMap(BlocksCache &cache) noexcept
 		cache.Config()->BlockSize() * 8);//todo: support multiple-block zone maps
 
 	BitIterator const it(m_inode_map->Data(), 0);
-	std::fill(it, it + 1, false);
-	std::fill(it + 1, it + inodes, true);
-	std::fill(it + inodes, it + cache.Config()->BlockSize() * 8, false);
+	std::fill(it, it + 1, true);
+	std::fill(it + 1, it + inodes, false);
+	std::fill(it + inodes, it + cache.Config()->BlockSize() * 8, true);
 }
 
 void Formatter::SetRootInode(Inode const &inode) noexcept
@@ -191,7 +193,7 @@ void Formatter::SetRootInode(Inode const &inode) noexcept
 
 Inode Formatter::MkDir(uint32_t entries)
 {
-	uint32_t const bytes = entries * sizeof(struct aufs_dir_entry);
+	uint32_t const bytes = entries * AUFS_DIR_SIZE;
 	uint32_t const blocks = (bytes + m_config->BlockSize() - 1) /
 					m_config->BlockSize();
 	Inode inode(m_cache, m_super.AllocateInode());
@@ -203,6 +205,38 @@ Inode Formatter::MkDir(uint32_t entries)
 	inode.SetUid(getuid());
 	inode.SetGid(getgid());
 	inode.SetMode(493 | S_IFDIR);
+
+	return inode;
+}
+#include <iostream>
+Inode Formatter::MkRootDir()
+{
+	uint32_t const bytes = 2 * AUFS_DIR_SIZE;
+	uint32_t const blocks = (bytes + m_config->BlockSize() - 1) /
+					m_config->BlockSize();
+	Inode inode(m_cache, m_super.AllocateInode());
+	uint32_t block = m_super.AllocateBlocks(blocks);
+	std::cout<<"root inode no: "<<inode.InodeNo()<<"\n";
+	inode.SetFirstBlock(block);
+	inode.SetBlocksCount(blocks);
+	inode.SetSize(2*AUFS_DIR_SIZE);
+	inode.SetUid(getuid());
+	inode.SetGid(getgid());
+	//inode.SetMode(493 | S_IFDIR);
+	inode.SetMode(S_IFDIR + 0755);
+	inode.SetCreateTime(time(NULL));
+	//BlockPtr rootContent = m_cache.GetBlock(3+m_config->InodeBlocks()+inode.FirstBlock());//todo: modify according to extent map block map inode map inodes
+	BlockPtr rootContent = m_cache.GetBlock(block);
+	BitIterator const it(rootContent->Data(), 0);
+	//struct  aufs_disk_dir_entry this_parent_dirs[3]={{htonl(1),"."},{htonl(1),".."},{htonl(2),".badblocks"}};
+	struct  aufs_disk_dir_entry* raw_parent_dirs = reinterpret_cast<struct aufs_disk_dir_entry *>(
+			rootContent->Data());
+	raw_parent_dirs[0].dde_inode=htonl(1);
+	strcpy((char*)(((uint8_t *)&raw_parent_dirs[0])+sizeof(uint32_t)), ".");
+	raw_parent_dirs[1].dde_inode=htonl(1);
+	strcpy((char*)(((uint8_t *)&raw_parent_dirs[1])+sizeof(uint32_t) ), "..");
+	raw_parent_dirs[2].dde_inode=htonl(2);
+	strcpy((char*)(((uint8_t *)&raw_parent_dirs[2])+sizeof(uint32_t)) , ".badblocks");
 
 	return inode;
 }
@@ -250,8 +284,7 @@ void Formatter::AddChild(Inode &inode, char const *name, Inode const &ch)
 	if (!(inode.Mode() & S_IFDIR))
 		throw std::logic_error("it is not directory");
 
-	uint32_t const inblock = m_config->BlockSize() /
-					sizeof(struct aufs_dir_entry);
+	uint32_t const inblock = m_config->BlockSize() / AUFS_DIR_SIZE;
 	uint32_t const entries = inode.BlocksCount() * inblock;
 	uint32_t const left = entries - inode.Size();
 
@@ -262,10 +295,10 @@ void Formatter::AddChild(Inode &inode, char const *name, Inode const &ch)
 	uint32_t const offset = inode.Size() % inblock;
 
 	BlockPtr bp = m_cache.GetBlock(block);
-	struct aufs_dir_entry *dp = reinterpret_cast<struct aufs_dir_entry *>(
+	struct aufs_disk_dir_entry *dp = reinterpret_cast<struct aufs_disk_dir_entry *>(
 					bp->Data()) + offset;
-	strncpy(dp->ade_name, name, AUFS_NAME_MAXLEN - 1);
-	dp->ade_name[AUFS_NAME_MAXLEN - 1] = '\0';
-	dp->ade_inode = htonl(ch.InodeNo());
+	strncpy(dp->dde_name, name, AUFS_NAME_MAXLEN - 1);
+	dp->dde_name[AUFS_NAME_MAXLEN - 1] = '\0';
+	dp->dde_inode = htonl(ch.InodeNo());
 	inode.SetSize(inode.Size() + 1);
 }

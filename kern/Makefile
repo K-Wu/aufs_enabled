@@ -1,6 +1,6 @@
 ifneq ($(KERNELRELEASE),)
 obj-m := aufs.o
-aufs-objs := super.o inode.o dir.o file.o bitmap.o namei.o
+aufs-objs := super.o inode.o dir.o file.o bitmap.o namei.o itree_common.o
 CFLAGS_super.o := -DDEBUG
 CFLAGS_inode.o := -DDEBUG
 CFLAGS_dir.o := -DDEBUG
