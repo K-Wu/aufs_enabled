@@ -9,7 +9,7 @@
 static int aufs_get_block(struct inode *inode, sector_t iblock,
 						  struct buffer_head *bh_result, int create) //todo: add size limit detection //todo: check whether need to maintain bitmap as required by generic VFS operations
 {
-	if (create)
+	if (!(AUFS_INODE(inode)->ai_first_block))//create)//todo: check create semantics
 	{
 		AUFS_INODE(inode)->ai_first_block = aufs_new_zone(inode);
 	}
