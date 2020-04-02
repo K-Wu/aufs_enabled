@@ -7,22 +7,27 @@
 using BitType = unsigned char;
 static size_t const Bits = sizeof(BitType) * 8;
 
-struct BitReference {
-	BitType *	m_word;
-	BitType		m_mask;
+struct BitReference
+{
+	BitType *m_word;
+	BitType m_mask;
 
-	explicit BitReference(BitType * word, BitType mask) noexcept
+	explicit BitReference(BitType *word, BitType mask) noexcept
 		: m_word(word), m_mask(mask)
-	{ }
+	{
+	}
 
 	BitReference() noexcept
 		: m_word(nullptr), m_mask(0ul)
-	{ }
+	{
+	}
 
 	explicit operator bool() const noexcept
-	{ return *m_word & m_mask; }
+	{
+		return *m_word & m_mask;
+	}
 
-	BitReference & operator=(bool v) noexcept
+	BitReference &operator=(bool v) noexcept
 	{
 		if (v)
 			*m_word |= m_mask;
@@ -32,44 +37,63 @@ struct BitReference {
 		return *this;
 	}
 
-	BitReference & operator=(BitReference const & v) noexcept
-	{ return *this = bool(v); }
+	BitReference &operator=(BitReference const &v) noexcept
+	{
+		return *this = bool(v);
+	}
 
 	void flip() noexcept
-	{ *m_word ^= m_mask; }
+	{
+		*m_word ^= m_mask;
+	}
 };
 
-bool operator==(BitReference const & l, BitReference const & r) noexcept
-{ return bool(l) == bool(r); }
+bool operator==(BitReference const &l, BitReference const &r) noexcept
+{
+	return bool(l) == bool(r);
+}
 
-bool operator==(BitReference const & l, bool r) noexcept
-{ return bool(l) == r; }
+bool operator==(BitReference const &l, bool r) noexcept
+{
+	return bool(l) == r;
+}
 
-bool operator==(bool l, BitReference const & r) noexcept
-{ return r == l; }
+bool operator==(bool l, BitReference const &r) noexcept
+{
+	return r == l;
+}
 
-bool operator!=(BitReference const & l, BitReference const & r) noexcept
-{ return !(l == r); }
+bool operator!=(BitReference const &l, BitReference const &r) noexcept
+{
+	return !(l == r);
+}
 
-bool operator!=(BitReference const & l, bool r) noexcept
-{ return !(l == r); }
+bool operator!=(BitReference const &l, bool r) noexcept
+{
+	return !(l == r);
+}
 
-bool operator!=(bool l, BitReference const & r) noexcept
-{ return !(l == r); }
+bool operator!=(bool l, BitReference const &r) noexcept
+{
+	return !(l == r);
+}
 
 struct BitIteratorBase
-	: public std::iterator<std::random_access_iterator_tag, bool> {
+	: public std::iterator<std::random_access_iterator_tag, bool>
+{
 
-	BitType *	m_data;
-	size_t		m_offset;
+	BitType *m_data;
+	size_t m_offset;
 
 	explicit BitIteratorBase(BitType *ptr, size_t off) noexcept
 		: m_data(ptr), m_offset(off)
-	{ }
+	{
+	}
 
 	void increment() noexcept
 	{
-		if (m_offset++ == Bits - 1) {
+		if (m_offset++ == Bits - 1)
+		{
 			++m_data;
 			m_offset = 0;
 		}
@@ -77,7 +101,8 @@ struct BitIteratorBase
 
 	void decrement() noexcept
 	{
-		if (m_offset-- == 0) {
+		if (m_offset-- == 0)
+		{
 			--m_data;
 			m_offset = Bits - 1;
 		}
@@ -89,7 +114,8 @@ struct BitIteratorBase
 		m_data += n / Bits;
 		n = n % Bits;
 
-		if (n < 0) {
+		if (n < 0)
+		{
 			n += Bits;
 			--m_data;
 		}
@@ -97,30 +123,41 @@ struct BitIteratorBase
 		m_offset = static_cast<size_t>(n);
 	}
 
-	bool operator==(BitIteratorBase const & it) const noexcept
-	{ return m_data == it.m_data && m_offset == it.m_offset; }
-
-	bool operator<(BitIteratorBase const & it) const noexcept
+	bool operator==(BitIteratorBase const &it) const noexcept
 	{
-		return m_data < it.m_data
-			|| (m_data == it.m_data && m_offset < it.m_offset);
+		return m_data == it.m_data && m_offset == it.m_offset;
 	}
 
-	bool operator!=(BitIteratorBase const & it) const noexcept
-	{ return !(*this == it); }
+	bool operator<(BitIteratorBase const &it) const noexcept
+	{
+		return m_data < it.m_data || (m_data == it.m_data && m_offset < it.m_offset);
+	}
 
-	bool operator>(BitIteratorBase const & it) const noexcept
-	{ return it < *this; }
+	bool operator!=(BitIteratorBase const &it) const noexcept
+	{
+		return !(*this == it);
+	}
 
-	bool operator<=(BitIteratorBase const & it) const noexcept
-	{ return !(it < *this); }
+	bool operator>(BitIteratorBase const &it) const noexcept
+	{
+		return it < *this;
+	}
 
-	bool operator>=(BitIteratorBase const & it) const noexcept
-	{ return !(*this < it); }
+	bool operator<=(BitIteratorBase const &it) const noexcept
+	{
+		return !(it < *this);
+	}
+
+	bool operator>=(BitIteratorBase const &it) const noexcept
+	{
+		return !(*this < it);
+	}
 };
 
-ptrdiff_t operator-(BitIteratorBase const & l, BitIteratorBase const & r) noexcept
-{ return Bits * (l.m_data - r.m_data) + l.m_offset - r.m_offset; }
+ptrdiff_t operator-(BitIteratorBase const &l, BitIteratorBase const &r) noexcept
+{
+	return Bits * (l.m_data - r.m_data) + l.m_offset - r.m_offset;
+}
 
 struct BitIterator : public BitIteratorBase
 {
@@ -130,16 +167,20 @@ struct BitIterator : public BitIteratorBase
 
 	BitIterator()
 		: BitIteratorBase(nullptr, 0)
-	{ }
+	{
+	}
 
 	BitIterator(BitType *ptr, size_t off)
 		: BitIteratorBase(ptr, off)
-	{ }
+	{
+	}
 
 	reference operator*() const noexcept
-	{ return reference(m_data, 1ul << m_offset); }
+	{
+		return reference(m_data, 1ul << m_offset);
+	}
 
-	iterator & operator++() noexcept
+	iterator &operator++() noexcept
 	{
 		increment();
 		return *this;
@@ -152,7 +193,7 @@ struct BitIterator : public BitIteratorBase
 		return it;
 	}
 
-	iterator & operator--() noexcept
+	iterator &operator--() noexcept
 	{
 		decrement();
 		return *this;
@@ -165,13 +206,13 @@ struct BitIterator : public BitIteratorBase
 		return it;
 	}
 
-	iterator & operator+=(ptrdiff_t d) noexcept
+	iterator &operator+=(ptrdiff_t d) noexcept
 	{
 		advance(d);
 		return *this;
 	}
 
-	iterator & operator-=(ptrdiff_t d) noexcept
+	iterator &operator-=(ptrdiff_t d) noexcept
 	{
 		*this += -d;
 		return *this;
@@ -190,11 +231,15 @@ struct BitIterator : public BitIteratorBase
 	}
 
 	reference operator[](ptrdiff_t d) const noexcept
-	{ return *(*this + d); }
+	{
+		return *(*this + d);
+	}
 };
 
-BitIterator operator+(ptrdiff_t d, BitIterator const & it) noexcept
-{ return it + d; }
+BitIterator operator+(ptrdiff_t d, BitIterator const &it) noexcept
+{
+	return it + d;
+}
 
 struct BitConstIterator : public BitIteratorBase
 {
@@ -205,20 +250,25 @@ struct BitConstIterator : public BitIteratorBase
 
 	BitConstIterator() noexcept
 		: BitIteratorBase(nullptr, 0)
-	{ }
+	{
+	}
 
 	BitConstIterator(BitType *ptr, size_t off) noexcept
 		: BitIteratorBase(ptr, off)
-	{ }
+	{
+	}
 
-	BitConstIterator(BitIterator const & it) noexcept
+	BitConstIterator(BitIterator const &it) noexcept
 		: BitIteratorBase(it.m_data, it.m_offset)
-	{ }
+	{
+	}
 
 	const_reference operator*() const noexcept
-	{ return const_reference(BitReference(m_data, 1 << m_offset)); }
+	{
+		return const_reference(BitReference(m_data, 1 << m_offset));
+	}
 
-	const_iterator & operator++() noexcept
+	const_iterator &operator++() noexcept
 	{
 		increment();
 		return *this;
@@ -231,7 +281,7 @@ struct BitConstIterator : public BitIteratorBase
 		return it;
 	}
 
-	const_iterator & operator--() noexcept
+	const_iterator &operator--() noexcept
 	{
 		decrement();
 		return *this;
@@ -244,14 +294,16 @@ struct BitConstIterator : public BitIteratorBase
 		return it;
 	}
 
-	const_iterator & operator+=(ptrdiff_t d) noexcept
+	const_iterator &operator+=(ptrdiff_t d) noexcept
 	{
 		advance(d);
 		return *this;
 	}
 
-	const_iterator & operator-=(ptrdiff_t d) noexcept
-	{ return (*this += -d); }
+	const_iterator &operator-=(ptrdiff_t d) noexcept
+	{
+		return (*this += -d);
+	}
 
 	const_iterator operator+(ptrdiff_t d) const noexcept
 	{
@@ -266,10 +318,14 @@ struct BitConstIterator : public BitIteratorBase
 	}
 
 	const_reference operator[](ptrdiff_t d) const noexcept
-	{ return *(*this + d); }
+	{
+		return *(*this + d);
+	}
 };
 
-BitConstIterator operator+(ptrdiff_t d, BitConstIterator const & it) noexcept
-{ return it + d; }
+BitConstIterator operator+(ptrdiff_t d, BitConstIterator const &it) noexcept
+{
+	return it + d;
+}
 
 #endif /*__BIT_ITERATOR_HPP__*/

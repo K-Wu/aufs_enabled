@@ -17,11 +17,9 @@ const struct file_operations aufs_file_ops = {
 	.mmap = generic_file_mmap,
 	.splice_read = generic_file_splice_read,
 	//unsupported ops in the original source file as follows
-	.write_iter	= generic_file_write_iter,
-	.fsync		= generic_file_fsync,
-	.splice_write = iter_file_splice_write
-};
-
+	.write_iter = generic_file_write_iter,
+	.fsync = generic_file_fsync,
+	.splice_write = iter_file_splice_write};
 
 int minix_setattr(struct dentry *dentry, struct iattr *attr)
 {
@@ -33,7 +31,8 @@ int minix_setattr(struct dentry *dentry, struct iattr *attr)
 		return error;
 
 	if ((attr->ia_valid & ATTR_SIZE) &&
-	    attr->ia_size != i_size_read(inode)) {
+		attr->ia_size != i_size_read(inode))
+	{
 		error = inode_newsize_ok(inode, attr->ia_size);
 		if (error)
 			return error;
@@ -48,6 +47,6 @@ int minix_setattr(struct dentry *dentry, struct iattr *attr)
 }
 
 const struct inode_operations minix_file_inode_operations = {
-	.setattr	= minix_setattr,
-	.getattr	= minix_getattr,
+	.setattr = minix_setattr,
+	.getattr = minix_getattr,
 };

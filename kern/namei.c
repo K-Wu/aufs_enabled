@@ -2,7 +2,8 @@
 static int add_nondir(struct dentry *dentry, struct inode *inode)
 {
 	int err = minix_add_link(dentry, inode);
-	if (!err) {
+	if (!err)
+	{
 		d_instantiate(dentry, inode);
 		return 0;
 	}
@@ -11,10 +12,10 @@ static int add_nondir(struct dentry *dentry, struct inode *inode)
 	return err;
 }
 
-int minix_mkdir(struct inode * dir, struct dentry *dentry, umode_t mode)//todo: assimilate
+int minix_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode) //todo: assimilate
 {
 	pr_debug("minix_mkdir \n");
-	struct inode * inode;
+	struct inode *inode;
 	int err;
 
 	inode_inc_link_count(dir);
@@ -52,7 +53,8 @@ int minix_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	int error;
 	struct inode *inode = aufs_new_inode(dir, mode, &error);
-	if (inode) {
+	if (inode)
+	{
 		minix_set_inode(inode, 0);
 		mark_inode_dirty(inode);
 		d_tmpfile(dentry, inode);
@@ -60,9 +62,9 @@ int minix_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
 	return error;
 }
 
-struct dentry *minix_lookup(struct inode * dir, struct dentry *dentry, unsigned int flags)
+struct dentry *minix_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
-	struct inode * inode = NULL;
+	struct inode *inode = NULL;
 	ino_t ino;
 
 	if (dentry->d_name.len > AUFS_NAME_LEN)
@@ -70,12 +72,11 @@ struct dentry *minix_lookup(struct inode * dir, struct dentry *dentry, unsigned 
 
 	ino = minix_inode_by_name(dentry);
 	if (ino)
-		inode =aufs_inode_get(dir->i_sb, ino);
+		inode = aufs_inode_get(dir->i_sb, ino);
 	return d_splice_alias(inode, dentry);
 }
 
-
-int minix_mknod(struct inode * dir, struct dentry *dentry, umode_t mode, dev_t rdev)
+int minix_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t rdev)
 {
 	int error;
 	struct inode *inode;
@@ -84,11 +85,13 @@ int minix_mknod(struct inode * dir, struct dentry *dentry, umode_t mode, dev_t r
 		return -EINVAL;
 
 	//inode = minix_new_inode(dir, mode, &error);
-	inode=aufs_new_inode(dir, mode, &error);//vtodo: verify done: find empty inode
-	pr_debug("minix_mknod inode %lu\n",inode->i_ino);
-	if (inode) {
-		int set_inode_ret=minix_set_inode(inode, rdev);
-		if (set_inode_ret){
+	inode = aufs_new_inode(dir, mode, &error); //vtodo: verify done: find empty inode
+	pr_debug("minix_mknod inode %lu\n", inode->i_ino);
+	if (inode)
+	{
+		int set_inode_ret = minix_set_inode(inode, rdev);
+		if (set_inode_ret)
+		{
 			return set_inode_ret;
 		}
 		mark_inode_dirty(inode);
@@ -100,7 +103,7 @@ int minix_mknod(struct inode * dir, struct dentry *dentry, umode_t mode, dev_t r
 //todo: add mkdir
 
 int minix_create(struct inode *dir, struct dentry *dentry, umode_t mode,
-		bool excl)
+				 bool excl)
 {
 	return minix_mknod(dir, dentry, mode, 0);
 }

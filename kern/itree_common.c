@@ -4,7 +4,11 @@
 #include <linux/slab.h>
 #include "minix.h"
 #include "aufs.h"
-enum {DIRECT = 7, DEPTH = 4};	/* Have triple indirect */
+enum
+{
+	DIRECT = 7,
+	DEPTH = 4
+}; /* Have triple indirect */
 #define DIRCOUNT 7
 
 // static inline unsigned nblocks(loff_t size, struct super_block *sb)
@@ -23,25 +27,27 @@ enum {DIRECT = 7, DEPTH = 4};	/* Have triple indirect */
 // 	return res;
 // }
 
-static int block_to_path(struct inode * inode, long block, int* offsets)
+static int block_to_path(struct inode *inode, long block, int *offsets)
 {
 	int n = 0;
 	struct super_block *sb = inode->i_sb;
 
-	if (block < 0) {
+	if (block < 0)
+	{
 		printk("MINIX-fs: block_to_path: block %ld < 0 on dev %pg\n",
-			block, sb->s_bdev);
-	 } //else if ((u64)block * (u64)sb->s_blocksize >=
-	// 		AUFS_SB(sb)->s_max_size) {
-	// 	if (printk_ratelimit())
-	// 		printk("MINIX-fs: block_to_path: "
-	// 		       "block %ld too big on dev %pg\n",
-	// 			block, sb->s_bdev);//todo: enable s_max_size
-	//}
-     else if (block < DIRCOUNT) {
+			   block, sb->s_bdev);
+	} //else if ((u64)block * (u64)sb->s_blocksize >=
+	  // 		AUFS_SB(sb)->s_max_size) {
+	  // 	if (printk_ratelimit())
+	  // 		printk("MINIX-fs: block_to_path: "
+	  // 		       "block %ld too big on dev %pg\n",
+	  // 			block, sb->s_bdev);//todo: enable s_max_size
+	  //}
+	else if (block < DIRCOUNT)
+	{
 		offsets[n++] = block;
-	} 
-	
+	}
+
 	return n;
 }
 
@@ -103,15 +109,13 @@ static int block_to_path(struct inode * inode, long block, int* offsets)
 // 	mark_inode_dirty(inode);
 // }
 
-
 static inline unsigned nblocks(loff_t size, struct super_block *sb)
 {
 	int k = sb->s_blocksize_bits - 10;
-	unsigned blocks, res;//, direct = DIRECT, i = DEPTH;
+	unsigned blocks, res; //, direct = DIRECT, i = DEPTH;
 	blocks = (size + sb->s_blocksize - 1) >> (BLOCK_SIZE_BITS + k);
 	res = blocks;
-    return res;
-    
+	return res;
 }
 unsigned V2_minix_blocks(loff_t size, struct super_block *sb)
 {

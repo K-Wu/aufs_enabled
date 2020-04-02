@@ -3,7 +3,8 @@
 
 #include "block.hpp"
 
-class Inode {
+class Inode
+{
 public:
 	explicit Inode(BlocksCache &cache, uint32_t no);
 
@@ -33,13 +34,13 @@ public:
 private:
 	void FillInode(BlocksCache &cache);
 
-	uint32_t		m_inode;
-	BlockPtr		m_block;
-	struct aufs_inode *	m_raw;
+	uint32_t m_inode;
+	BlockPtr m_block;
+	struct aufs_inode *m_raw;
 };
 
-
-class SuperBlock {
+class SuperBlock
+{
 public:
 	explicit SuperBlock(BlocksCache &cache);
 
@@ -52,18 +53,18 @@ private:
 	void FillBlockMap(BlocksCache &cache) noexcept;
 	void FillInodeMap(BlocksCache &Cache) noexcept;
 
-	BlockPtr	m_super_block;
-	BlockPtr	m_block_map;
-	BlockPtr	m_inode_map;
+	BlockPtr m_super_block;
+	BlockPtr m_block_map;
+	BlockPtr m_inode_map;
 };
 
-class Formatter {
+class Formatter
+{
 public:
 	Formatter(ConfigurationConstPtr config)
-		: m_config(config)
-		, m_cache(config)
-		, m_super(m_cache)
-	{ }
+		: m_config(config), m_cache(config), m_super(m_cache)
+	{
+	}
 
 	void SetRootInode(Inode const &inode) noexcept;
 	Inode MkDir(uint32_t entries);
@@ -73,10 +74,11 @@ public:
 
 	void AddChild(Inode &inode, char const *name, Inode const &ch);
 	Inode MkRootDir();
+
 private:
-	ConfigurationConstPtr	m_config;
-	BlocksCache		m_cache;
-	SuperBlock		m_super;
+	ConfigurationConstPtr m_config;
+	BlocksCache m_cache;
+	SuperBlock m_super;
 };
 
 #endif /*__FORMAT_HPP__*/
