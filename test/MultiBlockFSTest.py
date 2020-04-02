@@ -94,7 +94,7 @@ def seek_write_test():
     assert (len(pos_list_end) == len(pos_list2_end))
     assert (len(pos_list_beg) == len(pos_list_end))
     do_write_read_test(file_name, file_name2, pos_list_beg, pos_list_end, pos_list2_beg, pos_list2_end, block_char_num,
-                       file_content, file_content2, "/dev/nvme0n1", " /home/kwu/aufsMountPoint", 0, True)
+                       file_content, file_content2, "/dev/nvme0n1", " /home/kwu/aufsMountPoint", 1, True)
 
 
 def sequential_write_test():
@@ -127,7 +127,7 @@ def sequential_write_test():
     pos_list_end = pos_list[1:]
     pos_list2_beg = pos_list2[0:-1]
     pos_list2_end = pos_list2[1:]
-    do_write_read_test(file_name, file_name2, pos_list_beg, pos_list_end, pos_list2_beg, pos_list2_end, block_char_num, file_content, file_content2, "/dev/nvme0n1", " /home/kwu/aufsMountPoint", 0, False)
+    do_write_read_test(file_name, file_name2, pos_list_beg, pos_list_end, pos_list2_beg, pos_list2_end, block_char_num, file_content, file_content2, "/dev/nvme0n1", " /home/kwu/aufsMountPoint", 1, False)
 
 if __name__ =="__main__":
     sequential_write_test()
