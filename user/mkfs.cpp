@@ -11,10 +11,10 @@
 
 #include "format.hpp"
 
-size_t DeviceSize(std::string const & device)
+size_t DeviceSize(std::string const &device)
 {
 	std::ifstream in(device.c_str(),
-		std::ios::in | std::ios::binary | std::ios::ate);
+					 std::ios::in | std::ios::binary | std::ios::ate);
 	std::ifstream::streampos const size = in.tellg();
 
 	return static_cast<size_t>(size);
@@ -46,9 +46,9 @@ bool VerifyBlockSize(ConfigurationConstPtr config)
 
 	if (config->BlockSize() * 8 < config->Blocks())
 		std::cout << "WARNING: With block size = "
-			<< config->BlockSize() << " blocks number should be "
-			<< "less or equal to " << config->BlockSize() * 8
-			<< std::endl;
+				  << config->BlockSize() << " blocks number should be "
+				  << "less or equal to " << config->BlockSize() * 8
+				  << std::endl;
 
 	return true;
 }
@@ -70,12 +70,13 @@ ConfigurationConstPtr VerifyConfiguration(ConfigurationConstPtr config)
 void PrintHelp()
 {
 	std::cout << "Usage:" << std::endl
-		<< "\tmkfs.aufs [(--block_size | -s) SIZE] [(--blocks | -b) BLOCKS] DEVICE"
-		<< std::endl << std::endl
-		<< "Where:" << std::endl
-		<< "\tSIZE    - block size. Default is 4096 bytes." << std::endl
-		<< "\tBLOCKS  - number of blocks would be used for aufs. By default is DEVICE size / SIZE." << std::endl
-		<< "\tDEVICE  - device file." << std::endl;
+			  << "\tmkfs.aufs [(--block_size | -s) SIZE] [(--blocks | -b) BLOCKS] DEVICE"
+			  << std::endl
+			  << std::endl
+			  << "Where:" << std::endl
+			  << "\tSIZE    - block size. Default is 4096 bytes." << std::endl
+			  << "\tBLOCKS  - number of blocks would be used for aufs. By default is DEVICE size / SIZE." << std::endl
+			  << "\tDEVICE  - device file." << std::endl;
 }
 
 ConfigurationConstPtr ParseArgs(int argc, char **argv)
@@ -84,20 +85,30 @@ ConfigurationConstPtr ParseArgs(int argc, char **argv)
 	size_t block_size = 4096u;
 	size_t blocks = 0;
 
-	while (argc--) {
+	while (argc--)
+	{
 		std::string const arg(*argv++);
-		if ((arg == "--blocks" || arg == "-b") && argc) {
+		if ((arg == "--blocks" || arg == "-b") && argc)
+		{
 			blocks = std::stoi(*argv++);
 			--argc;
-		} else if ((arg == "--block_size" || arg == "-s") && argc) {
+		}
+		else if ((arg == "--block_size" || arg == "-s") && argc)
+		{
 			block_size = std::stoi(*argv++);
 			--argc;
-		} else if ((arg == "--dir" || arg == "-d") && argc) {
+		}
+		else if ((arg == "--dir" || arg == "-d") && argc)
+		{
 			dir = *argv++;
 			--argc;
-		} else if (arg == "--help" || arg == "-h") {
+		}
+		else if (arg == "--help" || arg == "-h")
+		{
 			PrintHelp();
-		} else {
+		}
+		else
+		{
 			device = arg;
 		}
 	}
@@ -125,11 +136,12 @@ Inode CopyFile(Formatter &fmt, std::string const &path)
 
 	Inode inode = fmt.MkFile(data.size());
 	size_t written = 0;
-	while (written != data.size()) {
+	while (written != data.size())
+	{
 		written += fmt.Write(inode,
-			reinterpret_cast<uint8_t const *>(data.data()) +
-				written,
-			data.size() - written);
+							 reinterpret_cast<uint8_t const *>(data.data()) +
+								 written,
+							 data.size() - written);
 	}
 
 	return inode;
@@ -139,31 +151,32 @@ Inode CopyDir(Formatter &fmt, std::string const &path)
 {
 	std::vector<std::string> entries;
 	struct dirent entry, *entryp = &entry;
-	std::unique_ptr<DIR, int(*)(DIR *)> dirp(opendir(path.c_str()),
-							&closedir);
+	std::unique_ptr<DIR, int (*)(DIR *)> dirp(opendir(path.c_str()),
+											  &closedir);
 	if (!dirp.get())
 		throw std::runtime_error("cannot open dir");
 
-	while (entryp) {
+	while (entryp)
+	{
 		//readdir_r(dirp.get(), &entry, &entryp);
 		readdir(dirp.get());
-		if (entryp && strcmp(entry.d_name, ".")
-				&& strcmp(entry.d_name, ".."))
+		if (entryp && strcmp(entry.d_name, ".") && strcmp(entry.d_name, ".."))
 			entries.push_back(std::string(entry.d_name)
-					.substr(0, AUFS_NAME_MAXLEN - 1));
+								  .substr(0, AUFS_NAME_MAXLEN - 1));
 	}
 
 	Inode inode = fmt.MkDir(entries.size());
-	for (std::string const &entry : entries) {
+	for (std::string const &entry : entries)
+	{
 		struct stat buffer;
 		if (stat((path + "/" + entry).c_str(), &buffer))
 			continue;
 		if (buffer.st_mode & S_IFDIR)
 			fmt.AddChild(inode, entry.c_str(),
-					CopyDir(fmt, path + "/" + entry));
+						 CopyDir(fmt, path + "/" + entry));
 		else
 			fmt.AddChild(inode, entry.c_str(),
-					CopyFile(fmt, path + "/" + entry));
+						 CopyFile(fmt, path + "/" + entry));
 	}
 
 	return inode;
@@ -171,18 +184,21 @@ Inode CopyDir(Formatter &fmt, std::string const &path)
 
 int main(int argc, char **argv)
 {
-	try {
+	try
+	{
 		ConfigurationConstPtr config = ParseArgs(argc - 1, argv + 1);
 		Formatter format(config);
 
-		if (!config->SourceDir().empty())
-			format.SetRootInode(CopyDir(format,
-						config->SourceDir()));
-		else
-			format.SetRootInode(format.MkDir(16));
+		//if (!config->SourceDir().empty())
+		//		format.SetRootInode(CopyDir(format,
+		//				config->SourceDir()));
+		//else
+		format.SetRootInode(format.MkRootDir());
 
 		return 0;
-	} catch (std::exception const & e) {
+	}
+	catch (std::exception const &e)
+	{
 		std::cout << "ERROR: " << e.what() << std::endl;
 		PrintHelp();
 	}

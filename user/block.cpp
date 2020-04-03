@@ -5,20 +5,26 @@
 
 BlocksCache::BlocksCache(ConfigurationConstPtr config)
 	: m_config(config)
-{ }
+{
+}
 
 BlocksCache::~BlocksCache()
 {
-	try {
+	try
+	{
 		Sync();
-	} catch (...) {
+	}
+	catch (...)
+	{
 		std::cout << "PANIC: Cannot sync blocks with device"
-			<< std::endl;
+				  << std::endl;
 	}
 }
 
 ConfigurationConstPtr BlocksCache::Config() const noexcept
-{ return m_config; }
+{
+	return m_config;
+}
 
 BlockPtr BlocksCache::GetBlock(size_t no)
 {
@@ -32,7 +38,7 @@ BlockPtr BlocksCache::GetBlock(size_t no)
 		Sync();
 
 	std::ifstream in(Config()->Device().c_str(),
-		std::ios::in | std::ios::binary);
+					 std::ios::in | std::ios::binary);
 
 	BlockPtr block = ReadBlock(in, no);
 	m_cache.insert(std::make_pair(no, block));
@@ -43,11 +49,12 @@ BlockPtr BlocksCache::GetBlock(size_t no)
 void BlocksCache::Sync()
 {
 	std::fstream out(Config()->Device().c_str(),
-		std::ios::out | std::ios::in | std::ios::binary);
+					 std::ios::out | std::ios::in | std::ios::binary);
 
 	std::map<size_t, BlockPtr>::iterator it(std::begin(m_cache));
 	std::map<size_t, BlockPtr>::iterator const e(std::end(m_cache));
-	while (it != e) {
+	while (it != e)
+	{
 		WriteBlock(out, it->second);
 		if (it->second.unique())
 			it = m_cache.erase(it);
@@ -65,4 +72,6 @@ BlockPtr BlocksCache::ReadBlock(std::istream &in, size_t no)
 }
 
 void BlocksCache::WriteBlock(std::ostream &out, BlockPtr block)
-{ block->Dump(out.seekp(block->BlockNo() * block->Size())); }
+{
+	block->Dump(out.seekp(block->BlockNo() * block->Size()));
+}
