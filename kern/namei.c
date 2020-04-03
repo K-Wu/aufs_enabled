@@ -14,7 +14,7 @@ static int add_nondir(struct dentry *dentry, struct inode *inode)
 
 int minix_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode) //todo: assimilate
 {
-	pr_debug("minix_mkdir \n");
+	printk("minix_mkdir \n");
 	struct inode *inode;
 	int err;
 
@@ -86,7 +86,7 @@ int minix_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t rd
 
 	//inode = minix_new_inode(dir, mode, &error);
 	inode = aufs_new_inode(dir, mode, &error); //vtodo: verify done: find empty inode
-	pr_debug("minix_mknod inode %lu\n", inode->i_ino);
+	printk("minix_mknod inode %lu\n", inode->i_ino);
 	if (inode)
 	{
 		int set_inode_ret = minix_set_inode(inode, rdev);

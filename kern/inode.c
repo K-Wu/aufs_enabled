@@ -8,9 +8,10 @@
 
 static int aufs_get_block(struct inode *inode, sector_t iblock,
 						  struct buffer_head *bh_result, int create) //todo: add size limit detection //todo: check whether need to maintain bitmap as required by generic VFS operations
-{
-	if (!(AUFS_INODE(inode)->ai_first_block))//create)//todo: check create semantics
+{//create is 1 iff during a block_write_full_page and 0 iff during a block_read_full_page
+	if (!(AUFS_INODE(inode)->ai_first_block))//create)//done: check create semantics
 	{
+		printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
 		AUFS_INODE(inode)->ai_first_block = aufs_new_zone(inode);
 	}
 	map_bh(bh_result, inode->i_sb, iblock + AUFS_INODE(inode)->ai_first_block);
@@ -46,16 +47,17 @@ static struct buffer_head *V2_minix_update_inode(struct inode *inode) //vtodo: v
 	raw_inode = minix_V2_raw_inode(inode->i_sb, inode->i_ino, &bh);
 	if (!raw_inode)
 		return NULL;
-	raw_inode->di_mode = htonl(inode->i_mode);
-	raw_inode->di_uid = htonl(fs_high2lowuid(i_uid_read(inode)));
-	raw_inode->di_gid = htonl(fs_high2lowgid(i_gid_read(inode)));
+	raw_inode->di_mode = cpu_to_be32(inode->i_mode);//todo: remove htonl(inode->i_mode)
+	raw_inode->di_uid = cpu_to_be32(fs_high2lowuid(i_uid_read(inode)));//todo: remove htonl(fs_high2lowuid(i_uid_read(inode)))
+	raw_inode->di_gid = cpu_to_be32(fs_high2lowgid(i_gid_read(inode)));//todo: remove htonl(fs_high2lowgid(i_gid_read(inode)))
 	//raw_inode->i_nlinks = inode->i_nlink; //todo: add aufs_disk_inode field support
-	raw_inode->di_size = htonl(inode->i_size);
-	raw_inode->di_blocks = htonl((raw_inode->di_size + inode->i_sb->s_blocksize - 1) / (inode->i_sb->s_blocksize));
+	raw_inode->di_size = cpu_to_be32(inode->i_size);
+	raw_inode->di_blocks =cpu_to_be32(inode->i_blocks);
+	//raw_inode->di_blocks = cpu_to_be32((raw_inode->di_size + inode->i_sb->s_blocksize - 1) / (inode->i_sb->s_blocksize));//todo: remove htonl((raw_inode->di_size + inode->i_sb->s_blocksize - 1) / (inode->i_sb->s_blocksize));
 	//raw_inode->i_mtime = inode->i_mtime.tv_sec; //todo: add aufs_disk_inode field support
 	//raw_inode->i_atime = inode->i_atime.tv_sec; //todo: add aufs_disk_inode field support
 	raw_inode->di_ctime = cpu_to_be64(inode->i_ctime.tv_sec);
-	raw_inode->di_first = htonl(aufs_inode->ai_first_block);
+	raw_inode->di_first = cpu_to_be32(aufs_inode->ai_first_block);
 	//todo: need to update the first block pointer
 	// if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
 	// 	raw_inode->i_zone[0] = old_encode_dev(inode->i_rdev);
@@ -69,7 +71,7 @@ int minix_write_inode(struct inode *inode, struct writeback_control *wbc) //vtod
 {
 	int err = 0;
 	struct buffer_head *bh;
-	pr_debug("write inode %lu\n", inode->i_ino);
+	printk("write inode %lu\n", inode->i_ino);
 	printk("minix_write_inode %lu info:\n"
 		   "\tsize   = %lu\n"
 		   "\tfirst_block  = %lu\n"
@@ -127,7 +129,7 @@ struct inode *aufs_inode_get(struct super_block *sb, ino_t no)
 	block = aufs_inode_block(asb, no);
 	offset = aufs_inode_offset(asb, no);
 
-	pr_debug("aufs_inode_get %lu from %lu block with offset %lu\n",
+	printk("aufs_inode_get %lu from %lu block with offset %lu\n",
 			 (unsigned long)no, (unsigned long)block, (unsigned long)offset);
 
 	bh = sb_bread(sb, block);
@@ -157,7 +159,7 @@ struct inode *aufs_inode_get(struct super_block *sb, ino_t no)
 	else
 		goto read_error;
 
-	pr_debug("aufs_inode_get %lu info:\n"
+	printk("aufs_inode_get %lu info:\n"
 			 "\tsize   = %lu\n"
 			 "\tfirst_block  = %lu\n"
 			 "\tblocks = %lu\n"
@@ -220,13 +222,13 @@ int minix_set_inode(struct inode *inode, dev_t rdev)
 static int aufs_readpage(struct file *file, struct page *page)
 {
 
-	pr_debug("aufs_readpage\n");
+	printk("aufs_readpage\n");
 	return block_read_full_page(page, aufs_get_block);
 }
 
 static int aufs_writepage(/*struct file *file, */ struct page *page, struct writeback_control *wbc)
 {
-	pr_debug("aufs_writepage\n");
+	printk("aufs_writepage\n");
 	return block_write_full_page(page, aufs_get_block, wbc);
 }
 

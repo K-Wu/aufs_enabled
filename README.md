@@ -10,6 +10,7 @@ mkfs.aufs /dev/nvme0n1
 sudo rmmod aufs && make clean && make -j && sudo insmod aufs.ko
 
 ** make user
+sudo blkdiscard /dev/nvme0n1
 make clean && make -j && sudo ./mkfs.aufs /dev/nvme0n1
 
 ** How to mount

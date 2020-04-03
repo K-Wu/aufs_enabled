@@ -1,3 +1,4 @@
+#include "linux/byteorder/little_endian.h"
 #include <algorithm>
 #include <ctime>
 #include <arpa/inet.h>
@@ -7,17 +8,18 @@
 #include "bit_iterator.hpp"
 #include "format.hpp"
 
+
 namespace
 {
 
-uint64_t ntohll(uint64_t n)
-{
-	uint64_t test = 1ull;
-	if (*(char *)&test == 1ull)
-		return (static_cast<uint64_t>(htonl(n & 0xffffffff)) << 32u) | static_cast<uint64_t>(htonl(n >> 32u));
-	else
-		return n;
-}
+// uint64_t ntohll(uint64_t n)
+// {
+// 	uint64_t test = 1ull;
+// 	if (*(char *)&test == 1ull)
+// 		return (static_cast<uint64_t>(htonl(n & 0xffffffff)) << 32u) | static_cast<uint64_t>(htonl(n >> 32u));
+// 	else
+// 		return n;
+// }
 
 } // namespace
 
@@ -34,72 +36,72 @@ uint32_t Inode::InodeNo() const noexcept
 
 uint32_t Inode::FirstBlock() const noexcept
 {
-	return ntohl(AI_FIRST_BLOCK(m_raw));
+	return __be32_to_cpu(AI_FIRST_BLOCK(m_raw));//todo: remove ntohl(AI_FIRST_BLOCK(m_raw));
 }
 
 void Inode::SetFirstBlock(uint32_t block) noexcept
 {
-	AI_FIRST_BLOCK(m_raw) = ntohl(block);
+	AI_FIRST_BLOCK(m_raw) = __cpu_to_be32(block);//todo: remove ntohl(block);
 }
 
 uint32_t Inode::BlocksCount() const noexcept
 {
-	return ntohl(AI_BLOCKS(m_raw));
+	return __be32_to_cpu(AI_BLOCKS(m_raw));//todo: remove ntohl(AI_BLOCKS(m_raw));
 }
 
 void Inode::SetBlocksCount(uint32_t count) noexcept
 {
-	AI_BLOCKS(m_raw) = ntohl(count);
+	AI_BLOCKS(m_raw) = __cpu_to_be32(count);//todo: remove ntohl(count);
 }
 
 uint32_t Inode::Size() const noexcept
 {
-	return ntohl(AI_SIZE(m_raw));
+	return __be32_to_cpu(AI_SIZE(m_raw));//todo: remove ntohl(AI_SIZE(m_raw));
 }
 
 void Inode::SetSize(uint32_t size) noexcept
 {
-	AI_SIZE(m_raw) = ntohl(size);
+	AI_SIZE(m_raw) = __cpu_to_be32(size);//todo: remove ntohl(size);
 }
 
 uint32_t Inode::Gid() const noexcept
 {
-	return ntohl(AI_GID(m_raw));
+	return __be32_to_cpu(AI_GID(m_raw));//todo: remove ntohl(AI_GID(m_raw));
 }
 
 void Inode::SetGid(uint32_t gid) noexcept
 {
-	AI_GID(m_raw) = ntohl(gid);
+	AI_GID(m_raw) = __cpu_to_be32(gid);//todo: remove ntohl(gid);
 }
 
 uint32_t Inode::Uid() const noexcept
 {
-	return ntohl(AI_UID(m_raw));
+	return __be32_to_cpu(AI_UID(m_raw));//todo: remove ntohl(AI_UID(m_raw));
 }
 
 void Inode::SetUid(uint32_t uid) noexcept
 {
-	AI_UID(m_raw) = ntohl(uid);
+	AI_UID(m_raw) = __cpu_to_be32(uid);//todo: remove ntohl(uid);
 }
 
 uint32_t Inode::Mode() const noexcept
 {
-	return ntohl(AI_MODE(m_raw));
+	return __be32_to_cpu(AI_MODE(m_raw));//todo: remove ntohl(AI_MODE(m_raw));
 }
 
 void Inode::SetMode(uint32_t mode) noexcept
 {
-	AI_MODE(m_raw) = ntohl(mode);
+	AI_MODE(m_raw) = __cpu_to_be32(mode);//todo: remove ntohl(mode);
 }
 
 uint64_t Inode::CreateTime() const noexcept
 {
-	return ntohll(AI_CTIME(m_raw));
+	return __be64_to_cpu(AI_CTIME(m_raw));//todo: remove ntohll(AI_CTIME(m_raw));
 }
 
 void Inode::SetCreateTime(uint64_t ctime) noexcept
 {
-	AI_CTIME(m_raw) = ntohll(ctime);
+	AI_CTIME(m_raw) = __cpu_to_be64(ctime);//todo: remove ntohll(ctime);
 }
 
 void Inode::FillInode(BlocksCache &cache)
@@ -112,7 +114,8 @@ void Inode::FillInode(BlocksCache &cache)
 
 	m_block = cache.GetBlock(block);
 	m_raw = reinterpret_cast<struct aufs_inode *>(m_block->Data() + offset);
-	AI_CTIME(m_raw) = ntohll(time(NULL));
+	//AI_CTIME(m_raw) = ntohll(time(NULL));
+	SetCreateTime(time(NULL));
 }
 
 SuperBlock::SuperBlock(BlocksCache &cache)
@@ -194,11 +197,11 @@ void SuperBlock::FillBlockMap(BlocksCache &cache) noexcept
 	size_t const blocks = std::min(cache.Config()->Blocks(),
 								   cache.Config()->BlockSize() * 8);
 	//size_t const blocks= cache.Config()->Blocks();//todo: support multiple-block zone maps
-	size_t const inode_blocks = cache.Config()->InodeBlocks();
+	//size_t const inode_blocks = cache.Config()->InodeBlocks();
 
 	BitIterator const it(m_block_map->Data(), 0);
-	std::fill(it, it + 3 + inode_blocks + 2, true);			  //todo: support multiple-block zone maps
-	std::fill(it + 3 + inode_blocks + 2, it + blocks, false); //2: 1 fore root inode and 1 for badblock
+	std::fill(it, it+1, true);	//std::fill(it, it + 3 + inode_blocks + 2, true);			  //todo: support multiple-block zone maps
+	std::fill(it + 1, it + blocks, false); //std::fill(it + 3 + inode_blocks + 2, it + blocks, false); //2: 1 fore root inode and 1 for badblock
 	std::fill(it + blocks, it + cache.Config()->BlockSize() * 8, true);
 }
 
@@ -245,8 +248,10 @@ Inode Formatter::MkRootDir()
 	uint32_t const blocks = (bytes + m_config->BlockSize() - 1) /
 							m_config->BlockSize();
 	Inode inode(m_cache, m_super.AllocateInode());
-	uint32_t block = m_super.AllocateBlocks(blocks);
+	uint32_t block = m_super.AllocateBlocks(blocks)+1+m_config->InodeBlocks()+1+1;//todo: support multiple inode maps blocks and zone maps blocks
 	std::cout << "root inode no: " << inode.InodeNo() << "\n";
+	std::cout << "root inode first block no: " << block << "\n";
+	std::cout << "root inode block_size: " << m_config->BlockSize() << "\n";
 	inode.SetFirstBlock(block);
 	inode.SetBlocksCount(blocks);
 	inode.SetSize(2 * AUFS_DIR_SIZE);

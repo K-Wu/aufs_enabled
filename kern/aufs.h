@@ -25,7 +25,7 @@ struct aufs_disk_super_block
 struct aufs_disk_inode
 {
 	__be32 di_first;
-	__be32 di_blocks; //todo: needs to update di_first and di_blocks once allocated and once write
+	__be32 di_blocks; //inode->i_blocks does not use the same block granularity 4KiB as in block map or pagecache. it is 512B hard coded in the kernel. //todo: needs to update di_first and di_blocks once allocated and once write
 	__be32 di_size;
 	__be32 di_gid;
 	__be32 di_uid;
@@ -67,7 +67,8 @@ struct aufs_inode
 
 static inline struct aufs_inode *AUFS_INODE(struct inode *inode)
 {
-	return (struct aufs_inode *)inode;
+	//return (struct aufs_inode *)inode;
+	return container_of(inode, struct aufs_inode, ai_inode);
 }
 
 static inline sector_t aufs_inode_block(struct aufs_super_block const *asb,

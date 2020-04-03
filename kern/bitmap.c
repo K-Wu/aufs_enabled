@@ -26,11 +26,11 @@ int aufs_new_zone(struct inode *inode) //return the block id of the new zone
 			spin_unlock(&bitmap_lock);
 			mark_buffer_dirty(bh);
 			j += i * bits_per_block * (sbi->asb_blocks_per_zone);																  // + 1+sbi->asb_inode_map_blocks+sbi->asb_zone_map_blocks +sbi->asb_inode_blocks;//todo: propagate block size per zone map bit //todo: add bitmap to disk
-			if (j < (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks) /*|| j >= sbi->s_nzones*/) //todo: add s_nzones to super block //todo: add bitmap to disk
+			if (j < 0 /*|| j >= sbi->s_nzones*/) //todo: add s_nzones to super block //todo: add bitmap to disk
 				break;
 
-			pr_debug("aufs_new_zone block successfully gained id %d\n", j);
-			return j;
+			printk("aufs_new_zone block successfully gained id %d. (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks) %d\n", j, (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks));
+			return j+(1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks + 1);//bitmap numbering starts from the data block region (root inode 1 returns 1+68, etc.)
 		}
 		spin_unlock(&bitmap_lock);
 	}
@@ -94,6 +94,7 @@ struct inode *aufs_new_inode(const struct inode *dir, umode_t mode, int *error) 
 	inode->i_ino = j;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
 	inode->i_blocks = 0;
+	memset(&(AUFS_INODE(inode)->ai_first_block), 0, sizeof(AUFS_INODE(inode)->ai_first_block));
 	//memset(&minix_i(inode)->u, 0, sizeof(minix_i(inode)->u));
 	insert_inode_hash(inode);
 	mark_inode_dirty(inode);

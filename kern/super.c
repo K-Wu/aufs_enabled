@@ -19,7 +19,7 @@ static void aufs_put_super(struct super_block *sb)
 	for (i = 0; i < asb->asb_zone_map_blocks; i++)
 		brelse(asb->s_zmap[i]);
 	kfree(asb->s_zmap);
-	pr_debug("aufs super block destroyed\n");
+	printk("aufs super block destroyed\n");
 }
 
 static struct super_operations const aufs_super_ops = {
@@ -72,7 +72,7 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 	brelse(bh);
 
 	//this setup the in-memory zone map and inode map
-	pr_debug("asb->asb_zone_map_blocks %lu,  asb->asb_inode_map_blocks %lu\n", asb->asb_zone_map_blocks, asb->asb_inode_map_blocks);
+	printk("asb->asb_zone_map_blocks %lu,  asb->asb_inode_map_blocks %lu\n", asb->asb_zone_map_blocks, asb->asb_inode_map_blocks);
 	i = (asb->asb_zone_map_blocks + asb->asb_inode_map_blocks) * sizeof(bh);
 	map = kzalloc(i, GFP_KERNEL);
 	if (!map)
@@ -106,7 +106,7 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 		goto out;
 	}
 
-	pr_debug("aufs super block info:\n"
+	printk("aufs super block info:\n"
 			 "\tmagic           = %lu\n"
 			 "\tinode blocks    = %lu\n"
 			 "\tblock size      = %lu\n"
@@ -195,7 +195,7 @@ static struct dentry *aufs_mount(struct file_system_type *type, int flags,
 	if (IS_ERR(entry))
 		pr_err("aufs mounting failed\n");
 	else
-		pr_debug("aufs mounted\n");
+		printk("aufs mounted\n");
 	return entry;
 }
 
@@ -225,7 +225,7 @@ static void aufs_free_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
 
-	pr_debug("freeing inode %lu\n", (unsigned long)inode->i_ino);
+	printk("freeing inode %lu\n", (unsigned long)inode->i_ino);
 	kmem_cache_free(aufs_inode_cache, AUFS_INODE(inode));
 }
 
@@ -276,7 +276,7 @@ static int __init aufs_init(void)
 		return ret;
 	}
 
-	pr_debug("aufs module loaded\n");
+	printk("aufs module loaded\n");
 
 	return 0;
 }
@@ -290,7 +290,7 @@ static void __exit aufs_fini(void)
 
 	aufs_inode_cache_destroy();
 
-	pr_debug("aufs module unloaded\n");
+	printk("aufs module unloaded\n");
 }
 
 module_init(aufs_init);
