@@ -45,6 +45,9 @@ def do_write_read_test(file_name, file_name2, pos_list_beg, pos_list_end, pos_li
                 print("test idx: " + str(w_idx) + " file 1 result: " + str(
                 "".join(file_content[0:int(math.floor(pos_list_end[w_idx] * block_char_num))]) == file_curr_content))
                 string_inequality("".join(file_content[0:int(math.floor(pos_list_end[w_idx] * block_char_num))]),file_curr_content)
+                print("".join(file_content[0:int(math.floor(pos_list_end[w_idx] * block_char_num))]))
+                print(file_curr_content)
+
         if np.random.uniform()<remount_prob:
             do_unmount_mount(mount_dev, mount_point)
 
@@ -60,6 +63,8 @@ def do_write_read_test(file_name, file_name2, pos_list_beg, pos_list_end, pos_li
                 print("test idx: " + str(w_idx) + " file 2 result: " + str(
                     "".join(file_content2[0:int(math.floor(pos_list2_end[w_idx] * block_char_num))]) == file_curr_content2))
                 string_inequality("".join(file_content2[0:int(math.floor(pos_list2_end[w_idx] * block_char_num))]), file_curr_content2)
+                print("".join(file_content2[0:int(math.floor(pos_list2_end[w_idx] * block_char_num))]))
+                print(file_curr_content2)
         if np.random.uniform()<remount_prob:
             do_unmount_mount(mount_dev, mount_point)
 
@@ -73,8 +78,8 @@ def seek_write_test():
 
     while True:
         this_run_random_int = int(np.random.randint(10000000))
-        file_name = "./aufsMountPoint/test_multiple_block_seek_write_{}.log".format(this_run_random_int)
-        file_name2 = "./aufsMountPoint/test_multiple_block_seek_write2_{}.log".format(this_run_random_int)
+        file_name = "/home/kwu/aufsMountPoint/test_multiple_block_seek_write_{}.log".format(this_run_random_int)
+        file_name2 = "/home/kwu/aufsMountPoint/test_multiple_block_seek_write2_{}.log".format(this_run_random_int)
         if (not os.path.exists(file_name)) and (not os.path.exists(file_name2)):
             print(this_run_random_int)
             break
@@ -105,8 +110,8 @@ def sequential_write_test():
 
     while True:
         this_run_random_int = int(np.random.randint(10000000))
-        file_name = "./aufsMountPoint/test_multiple_block_write_{}.log".format(this_run_random_int)
-        file_name2 = "./aufsMountPoint/test_multiple_block_write2_{}.log".format(this_run_random_int)
+        file_name = "/home/kwu/aufsMountPoint/test_multiple_block_write_{}.log".format(this_run_random_int)
+        file_name2 = "/home/kwu/aufsMountPoint/test_multiple_block_write2_{}.log".format(this_run_random_int)
         if (not os.path.exists(file_name)) and (not os.path.exists(file_name2)):
             print(this_run_random_int)
             break
@@ -131,4 +136,4 @@ def sequential_write_test():
 
 if __name__ =="__main__":
     sequential_write_test()
-    seek_write_test()
+    #seek_write_test()

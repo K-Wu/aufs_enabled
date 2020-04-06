@@ -12,13 +12,12 @@ static int aufs_get_block(struct inode *inode, sector_t iblock,
 {//create is 1 iff during a block_write_full_page and 0 iff during a block_read_full_page
 	
 	#ifdef MULTI_BLOCK_PTR_SCHEME
-	uint32_t block_size_bits = ilog2(bh_result->b_size);
 	uint32_t aufs_block_size = AUFS_SB(inode->i_sb)->asb_block_size;
 	if (bh_result->b_size!=BLOCK_SIZE){
-		printk("warning: bh_result->b_size!=BLOCK_SIZE\n");
+		printk("warning: bh_result->b_size(%ld)!=BLOCK_SIZE(%d)\n",bh_result->b_size,BLOCK_SIZE);
 	}
 	else{
-		printk("warning: bh_result->b_size==BLOCK_SIZE\n");
+		printk("warning: bh_result->b_size(%ld)==BLOCK_SIZE(%d)\n",bh_result->b_size,BLOCK_SIZE);
 	}
 	if (aufs_block_size<(bh_result->b_size)){
 		printk("error: aufs_block_size < BLOCK_SIZE\n");
@@ -28,15 +27,20 @@ static int aufs_get_block(struct inode *inode, sector_t iblock,
 		printk("error: aufs_block_size is not a multiple of BLOCK_SIZE\n");
 		return -EIO;
 	}
+	uint32_t block_size_bits = ilog2(bh_result->b_size);
 	uint32_t block_idx = (iblock)/(aufs_block_size>>block_size_bits);
 	uint32_t block_offset = iblock%(aufs_block_size>>block_size_bits);
+	
+	printk("aufs_get_block inode %d, iblock %lld\n",inode->i_ino,iblock);
+	
+	
 	//todo: determine where the block size is used. some place need to be switch to zone size
-	if (!(AUFS_INODE(inode)->ai_zone_ptr[block_idx]))//create)//done: check create semantics
+	if (!(AUFS_INODE(inode)->ai_zone_ptr[iblock/*block_idx*/]))//create)//done: check create semantics
 	{
 		printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
-		AUFS_INODE(inode)->ai_zone_ptr[block_idx] = aufs_new_zone(inode);
+		AUFS_INODE(inode)->ai_zone_ptr[iblock/*block_idx*/] = aufs_new_zone(inode);
 	}
-	map_bh(bh_result, inode->i_sb, block_offset + AUFS_INODE(inode)->ai_zone_ptr[block_idx]);
+	map_bh(bh_result, inode->i_sb, /*iblock*//*block_offset*/ + AUFS_INODE(inode)->ai_zone_ptr[iblock/*block_idx*/]);
 
 	#else
 	if (!(AUFS_INODE(inode)->ai_zone_ptr))//create)//done: check create semantics
@@ -334,7 +338,7 @@ int minix_getattr(const struct path *path, struct kstat *stat,
 
 	generic_fillattr(inode, stat);
 
-	stat->blocks = (sb->s_blocksize / 512) * V2_minix_blocks(stat->size, sb);
+	stat->blocks = (sb->s_blocksize / 512) * V2_minix_blocks(stat->size, sb);//todo: need to figure out the block calculation in aufs
 	stat->blksize = sb->s_blocksize;
 	return 0;
 }

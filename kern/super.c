@@ -42,6 +42,7 @@ static inline void aufs_super_block_fill(struct aufs_super_block *asb,
 	asb->asb_inodes_in_block =
 		asb->asb_block_size / sizeof(struct aufs_disk_inode);
 	asb->asb_blocks_per_zone = be32_to_cpu(dsb->dsb_blocks_per_zone);
+	
 }
 
 static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
@@ -161,6 +162,11 @@ static int aufs_fill_sb(struct super_block *sb, void *data, int silent)
 
 	sb->s_magic = asb->asb_magic;
 	sb->s_fs_info = asb;
+
+	if (!sb_set_blocksize(sb, asb->asb_block_size)){
+		printk("cannot setup sb blocksize\n");
+		return -EINVAL;
+		}
 	sb->s_op = &aufs_super_ops;
 
 	//sb->s_time_min = 0;
