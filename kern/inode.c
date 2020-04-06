@@ -5,13 +5,14 @@
 #include "minix.h"
 #include "aufs.h"
 #include <linux/writeback.h>
+#include <linux/log2.h>
 
 static int aufs_get_block(struct inode *inode, sector_t iblock,
 						  struct buffer_head *bh_result, int create) //todo: add size limit detection //todo: check whether need to maintain bitmap as required by generic VFS operations
 {//create is 1 iff during a block_write_full_page and 0 iff during a block_read_full_page
 	
 	#ifdef MULTI_BLOCK_PTR_SCHEME
-	uint32_t block_size_bits = block_size_bits(bh_result->b_size);
+	uint32_t block_size_bits = ilog2(bh_result->b_size);
 	uint32_t aufs_block_size = AUFS_SB(inode->i_sb)->asb_block_size;
 	if (bh_result->b_size!=BLOCK_SIZE){
 		printk("warning: bh_result->b_size!=BLOCK_SIZE\n");
