@@ -7,8 +7,7 @@
 static DEFINE_SPINLOCK(bitmap_lock);
 
 int aufs_new_zone(struct inode *inode) //return the block id of the new zone
-{									   //vtodo: verify done: assimilate this //todo: verify
-									   //todo: originally need to memset 0 after new block (see itree_common.c. alloc_branch()). move that to block free
+{									   //todo: originally need to memset 0 after new block (see itree_common.c. alloc_branch()). move that to block free
 	struct aufs_super_block *sbi = AUFS_SB(inode->i_sb);
 	int bits_per_block = 8 * inode->i_sb->s_blocksize;
 	int i;
@@ -30,7 +29,7 @@ int aufs_new_zone(struct inode *inode) //return the block id of the new zone
 				break;
 
 			printk("aufs_new_zone block successfully gained id %d. (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks) %d\n", j, (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks));
-			return j+(1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks + 1);//bitmap numbering starts from the data block region (root inode 1 returns 1+68, etc.)
+			return j* (sbi->asb_blocks_per_zone)+(1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks + 1* (sbi->asb_blocks_per_zone));//bitmap numbering starts from the data block region (root inode 1 returns 1+68, etc.)
 		}
 		spin_unlock(&bitmap_lock);
 	}

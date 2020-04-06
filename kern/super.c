@@ -41,8 +41,8 @@ static inline void aufs_super_block_fill(struct aufs_super_block *asb,
 	asb->asb_zone_map_blocks = be32_to_cpu(dsb->dsb_zone_map_blocks);
 	asb->asb_inodes_in_block =
 		asb->asb_block_size / sizeof(struct aufs_disk_inode);
-	asb->asb_blocks_per_zone = be32_to_cpu(dsb->dsb_blocks_per_zone);
-	
+	//asb->asb_blocks_per_zone = be32_to_cpu(dsb->dsb_blocks_per_zone);
+	asb->asb_blocks_per_zone = (asb->asb_block_size>4096)?(asb->asb_block_size/4096):1;
 }
 
 static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
@@ -156,15 +156,17 @@ static int aufs_fill_sb(struct super_block *sb, void *data, int silent)
 {
 	struct aufs_super_block *asb = aufs_super_block_read(sb);
 	struct inode *root;
+	int sb_blocksize= asb->asb_block_size>4096?4096:asb->asb_block_size;
 
 	if (!asb)
 		return -EINVAL;
 
 	sb->s_magic = asb->asb_magic;
 	sb->s_fs_info = asb;
-
-	if (!sb_set_blocksize(sb, asb->asb_block_size)){
-		printk("cannot setup sb blocksize\n");
+	
+	if (!sb_set_blocksize(sb, sb_blocksize)){
+		pr_err("device does not support block size %lu\n",
+			   (unsigned long)asb->asb_block_size);
 		return -EINVAL;
 		}
 	sb->s_op = &aufs_super_ops;
@@ -172,12 +174,6 @@ static int aufs_fill_sb(struct super_block *sb, void *data, int silent)
 	//sb->s_time_min = 0;
 	//sb->s_time_max = U32_MAX;
 
-	if (sb_set_blocksize(sb, asb->asb_block_size) == 0)
-	{
-		pr_err("device does not support block size %lu\n",
-			   (unsigned long)asb->asb_block_size);
-		return -EINVAL;
-	}
 
 	root = aufs_inode_get(sb, asb->asb_root_inode);
 	if (IS_ERR(root))

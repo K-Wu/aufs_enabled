@@ -36,7 +36,7 @@ struct aufs_disk_inode
 	#else
 	__be32 di_block_ptr;
 	#endif
-	__be32 di_blocks; //inode->i_blocks does not use the same block granularity 4KiB as in block map or pagecache. it is 512B hard coded in the kernel. //todo: needs to update di_block_ptr and di_blocks once allocated and once write
+	__be32 di_blocks; //inode->i_blocks does not use the same block granularity 4KiB as in block map or pagecache. it is 512B hard coded in the kernel.
 	__be32 di_size;
 	__be32 di_gid;
 	__be32 di_uid;

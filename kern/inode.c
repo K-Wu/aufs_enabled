@@ -13,6 +13,8 @@ static int aufs_get_block(struct inode *inode, sector_t iblock,
 	
 	#ifdef MULTI_BLOCK_PTR_SCHEME
 	uint32_t aufs_block_size = AUFS_SB(inode->i_sb)->asb_block_size;
+	uint32_t block_size_bits = ilog2(bh_result->b_size);
+	printk("warning: block_size_bits %d\n",block_size_bits);
 	if (bh_result->b_size!=BLOCK_SIZE){
 		printk("warning: bh_result->b_size(%ld)!=BLOCK_SIZE(%d)\n",bh_result->b_size,BLOCK_SIZE);
 	}
@@ -23,24 +25,24 @@ static int aufs_get_block(struct inode *inode, sector_t iblock,
 		printk("error: aufs_block_size < BLOCK_SIZE\n");
 		return -EIO;
 	}
-	if ((bh_result->b_size)%aufs_block_size!=0){
+	if ((aufs_block_size>(bh_result->b_size)) &&(aufs_block_size%(bh_result->b_size)!=0)){
 		printk("error: aufs_block_size is not a multiple of BLOCK_SIZE\n");
 		return -EIO;
 	}
-	uint32_t block_size_bits = ilog2(bh_result->b_size);
-	uint32_t block_idx = (iblock)/(aufs_block_size>>block_size_bits);
-	uint32_t block_offset = iblock%(aufs_block_size>>block_size_bits);
+	
+	uint32_t block_idx = (iblock)/(aufs_block_size/(bh_result->b_size));
+	uint32_t block_offset = iblock%(aufs_block_size/(bh_result->b_size));
 	
 	printk("aufs_get_block inode %d, iblock %lld\n",inode->i_ino,iblock);
 	
 	
 	//todo: determine where the block size is used. some place need to be switch to zone size
-	if (!(AUFS_INODE(inode)->ai_zone_ptr[iblock/*block_idx*/]))//create)//done: check create semantics
+	if (!(AUFS_INODE(inode)->ai_zone_ptr[/*iblock*/block_idx]))//create)//done: check create semantics
 	{
 		printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
-		AUFS_INODE(inode)->ai_zone_ptr[iblock/*block_idx*/] = aufs_new_zone(inode);
+		AUFS_INODE(inode)->ai_zone_ptr[/*iblock*/block_idx] = aufs_new_zone(inode);
 	}
-	map_bh(bh_result, inode->i_sb, /*iblock*//*block_offset*/ + AUFS_INODE(inode)->ai_zone_ptr[iblock/*block_idx*/]);
+	map_bh(bh_result, inode->i_sb, /*0*/block_offset + AUFS_INODE(inode)->ai_zone_ptr[/*iblock*/block_idx]);
 
 	#else
 	if (!(AUFS_INODE(inode)->ai_zone_ptr))//create)//done: check create semantics
@@ -196,24 +198,7 @@ struct inode *aufs_inode_get(struct super_block *sb, ino_t no)
 	di = (struct aufs_disk_inode *)(bh->b_data + offset);
 	aufs_inode_fill(ai, di);
 	brelse(bh);
-
-	inode->i_mapping->a_ops = &aufs_aops;
-	if (S_ISREG(inode->i_mode))
-	{ //vtodo: verifydone: mimic minix_set_inode
-		inode->i_op = &minix_file_inode_operations;
-		inode->i_fop = &aufs_file_ops;
-		inode->i_mapping->a_ops = &aufs_aops;
-	}
-	else if (S_ISDIR(inode->i_mode))
-	{
-		inode->i_op = &aufs_dir_inode_ops;
-		inode->i_fop = &aufs_dir_ops;
-		inode->i_mapping->a_ops = &aufs_aops;
-	}
-	else
-		goto read_error;
-
-	printk("aufs_inode_get %lu info:\n"
+printk("aufs_inode_get %lu info:\n"
 			 "\tsize   = %lu\n"
 			 "\tfirst_block  = %lu\n"
 			 "\tblocks = %lu\n"
@@ -233,6 +218,25 @@ struct inode *aufs_inode_get(struct super_block *sb, ino_t no)
 			 (unsigned long)i_gid_read(inode),
 			 (unsigned long)inode->i_mode,
 			 (int)S_ISDIR(inode->i_mode));
+	inode->i_mapping->a_ops = &aufs_aops;
+	if (S_ISREG(inode->i_mode))
+	{ //vtodo: verifydone: mimic minix_set_inode
+		inode->i_op = &minix_file_inode_operations;
+		inode->i_fop = &aufs_file_ops;
+		inode->i_mapping->a_ops = &aufs_aops;
+	}
+	else if (S_ISDIR(inode->i_mode))
+	{
+		inode->i_op = &aufs_dir_inode_ops;
+		inode->i_fop = &aufs_dir_ops;
+		inode->i_mapping->a_ops = &aufs_aops;
+	}
+	else{
+		pr_err("inode type error %ld\n",inode->i_ino);
+		goto read_error;
+	}
+
+	
 
 	unlock_new_inode(inode);
 

@@ -16,3 +16,6 @@ make clean && make -j && sudo ./mkfs.aufs /dev/nvme0n1
 ** How to mount
 sudo mount /dev/nvme0n1 ~/aufsMountPoint
 sudo umount ~/aufsMountPoint/
+
+** How to test
+dmesg >../logs/dmesg.log && sudo `which python` MultiBlockFSTest.py >../logs/MultiBlockFSTest.log && dmesg>../logs/dmesg.end.log
