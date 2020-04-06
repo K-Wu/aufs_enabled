@@ -13,6 +13,8 @@ public:
 	uint32_t FirstBlock() const noexcept;
 	void SetFirstBlock(uint32_t block) noexcept;
 
+	void ClearAllOtherZones() noexcept;
+
 	uint32_t BlocksCount() const noexcept;
 	void SetBlocksCount(uint32_t count) noexcept;
 

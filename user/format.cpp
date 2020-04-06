@@ -36,12 +36,18 @@ uint32_t Inode::InodeNo() const noexcept
 
 uint32_t Inode::FirstBlock() const noexcept
 {
-	return __be32_to_cpu(AI_FIRST_BLOCK(m_raw));//todo: remove ntohl(AI_FIRST_BLOCK(m_raw));
+	return __be32_to_cpu(AI_ZONE_PTR_FIRST(m_raw));//todo: remove ntohl(AI_ZONE_PTR_FIRST(m_raw));
 }
 
 void Inode::SetFirstBlock(uint32_t block) noexcept
 {
-	AI_FIRST_BLOCK(m_raw) = __cpu_to_be32(block);//todo: remove ntohl(block);
+	AI_ZONE_PTR_FIRST(m_raw) = __cpu_to_be32(block);//todo: remove ntohl(block);
+}
+
+void Inode::ClearAllOtherZones() noexcept{
+	for (int idx_loop_zone_ptr=1;idx_loop_zone_ptr<ZONE_PTR_IN_INODE_NUM;idx_loop_zone_ptr++){
+		AI_ZONE_PTR(m_raw)[idx_loop_zone_ptr]=__cpu_to_be32(0);
+	}
 }
 
 uint32_t Inode::BlocksCount() const noexcept
@@ -233,6 +239,7 @@ Inode Formatter::MkDir(uint32_t entries)
 	uint32_t block = m_super.AllocateBlocks(blocks);
 
 	inode.SetFirstBlock(block);
+	inode.ClearAllOtherZones();
 	inode.SetBlocksCount(blocks);
 	inode.SetSize(0);
 	inode.SetUid(getuid());
@@ -253,6 +260,7 @@ Inode Formatter::MkRootDir()
 	std::cout << "root inode first block no: " << block << "\n";
 	std::cout << "root inode block_size: " << m_config->BlockSize() << "\n";
 	inode.SetFirstBlock(block);
+	inode.ClearAllOtherZones();
 	inode.SetBlocksCount(blocks);
 	inode.SetSize(2 * AUFS_DIR_SIZE);
 	inode.SetUid(getuid());
@@ -284,7 +292,8 @@ Inode Formatter::MkFile(uint32_t size)
 	uint32_t block = m_super.AllocateBlocks(blocks);
 
 	inode.SetFirstBlock(block);
-	inode.SetBlocksCount(blocks);
+	inode.ClearAllOtherZones();
+	inode.SetBlocksCount(blocks);//todo: check block count
 	inode.SetUid(getuid());
 	inode.SetGid(getgid());
 	inode.SetMode(493 | S_IFREG);

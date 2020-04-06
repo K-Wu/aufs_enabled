@@ -9,19 +9,56 @@
 static int aufs_get_block(struct inode *inode, sector_t iblock,
 						  struct buffer_head *bh_result, int create) //todo: add size limit detection //todo: check whether need to maintain bitmap as required by generic VFS operations
 {//create is 1 iff during a block_write_full_page and 0 iff during a block_read_full_page
-	if (!(AUFS_INODE(inode)->ai_first_block))//create)//done: check create semantics
+	
+	#ifdef MULTI_BLOCK_PTR_SCHEME
+	uint32_t block_size_bits = block_size_bits(bh_result->b_size);
+	uint32_t aufs_block_size = AUFS_SB(inode->i_sb)->asb_block_size;
+	if (bh_result->b_size!=BLOCK_SIZE){
+		printk("warning: bh_result->b_size!=BLOCK_SIZE\n");
+	}
+	else{
+		printk("warning: bh_result->b_size==BLOCK_SIZE\n");
+	}
+	if (aufs_block_size<(bh_result->b_size)){
+		printk("error: aufs_block_size < BLOCK_SIZE\n");
+		return -EIO;
+	}
+	if ((bh_result->b_size)%aufs_block_size!=0){
+		printk("error: aufs_block_size is not a multiple of BLOCK_SIZE\n");
+		return -EIO;
+	}
+	uint32_t block_idx = (iblock)/(aufs_block_size>>block_size_bits);
+	uint32_t block_offset = iblock%(aufs_block_size>>block_size_bits);
+	//todo: determine where the block size is used. some place need to be switch to zone size
+	if (!(AUFS_INODE(inode)->ai_zone_ptr[block_idx]))//create)//done: check create semantics
 	{
 		printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
-		AUFS_INODE(inode)->ai_first_block = aufs_new_zone(inode);
+		AUFS_INODE(inode)->ai_zone_ptr[block_idx] = aufs_new_zone(inode);
 	}
-	map_bh(bh_result, inode->i_sb, iblock + AUFS_INODE(inode)->ai_first_block);
+	map_bh(bh_result, inode->i_sb, block_offset + AUFS_INODE(inode)->ai_zone_ptr[block_idx]);
+
+	#else
+	if (!(AUFS_INODE(inode)->ai_zone_ptr))//create)//done: check create semantics
+	{
+		printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
+		AUFS_INODE(inode)->ai_zone_ptr = aufs_new_zone(inode);
+	}
+	map_bh(bh_result, inode->i_sb, iblock + AUFS_INODE(inode)->ai_zone_ptr);
+	#endif
 	return 0;
 }
 
 static void aufs_inode_fill(struct aufs_inode *ai,
 							struct aufs_disk_inode const *di) //todo: aufs_inode_put
 {
-	ai->ai_first_block = be32_to_cpu(di->di_first);
+	#ifdef MULTI_BLOCK_PTR_SCHEME
+	int idx_loop_block_ptr;
+	for(idx_loop_block_ptr=0;idx_loop_block_ptr<ZONE_PTR_IN_INODE_NUM;idx_loop_block_ptr++){
+		ai->ai_zone_ptr[idx_loop_block_ptr]=be32_to_cpu(di->di_block_ptr[idx_loop_block_ptr]);
+	}
+	#else
+	ai->ai_zone_ptr = be32_to_cpu(di->di_block_ptr);
+	#endif
 	ai->ai_inode.i_mode = be32_to_cpu(di->di_mode);
 	ai->ai_inode.i_size = be32_to_cpu(di->di_size);
 	ai->ai_inode.i_blocks = be32_to_cpu(di->di_blocks);
@@ -42,6 +79,8 @@ static struct buffer_head *V2_minix_update_inode(struct inode *inode) //vtodo: v
 	struct buffer_head *bh;
 	struct aufs_disk_inode *raw_inode;
 	struct aufs_inode *aufs_inode = AUFS_INODE(inode);
+	
+	int idx_loop_block_ptr;
 	//int i;
 
 	raw_inode = minix_V2_raw_inode(inode->i_sb, inode->i_ino, &bh);
@@ -57,7 +96,13 @@ static struct buffer_head *V2_minix_update_inode(struct inode *inode) //vtodo: v
 	//raw_inode->i_mtime = inode->i_mtime.tv_sec; //todo: add aufs_disk_inode field support
 	//raw_inode->i_atime = inode->i_atime.tv_sec; //todo: add aufs_disk_inode field support
 	raw_inode->di_ctime = cpu_to_be64(inode->i_ctime.tv_sec);
-	raw_inode->di_first = cpu_to_be32(aufs_inode->ai_first_block);
+	#ifdef MULTI_BLOCK_PTR_SCHEME
+	for(idx_loop_block_ptr=0;idx_loop_block_ptr<ZONE_PTR_IN_INODE_NUM;idx_loop_block_ptr++){
+		raw_inode->di_block_ptr[idx_loop_block_ptr] = cpu_to_be32(aufs_inode->ai_zone_ptr[idx_loop_block_ptr]);
+	}
+	#else
+	raw_inode->di_block_ptr = cpu_to_be32(aufs_inode->ai_zone_ptr);
+	#endif
 	//todo: need to update the first block pointer
 	// if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
 	// 	raw_inode->i_zone[0] = old_encode_dev(inode->i_rdev);
@@ -82,7 +127,11 @@ int minix_write_inode(struct inode *inode, struct writeback_control *wbc) //vtod
 		   "\tisDirectory = %d\n",
 		   (unsigned long)inode->i_ino,
 		   (unsigned long)inode->i_size,
-		   (unsigned long)AUFS_INODE(inode)->ai_first_block,
+		   #ifdef MULTI_BLOCK_PTR_SCHEME
+		   (unsigned long)AUFS_INODE(inode)->ai_zone_ptr[0],
+		   #else 
+		   (unsigned long)AUFS_INODE(inode)->ai_zone_ptr,
+		   #endif
 		   (unsigned long)inode->i_blocks,
 		   (unsigned long)i_uid_read(inode),
 		   (unsigned long)i_gid_read(inode),
@@ -169,7 +218,11 @@ struct inode *aufs_inode_get(struct super_block *sb, ino_t no)
 			 "\tisDirectory = %d\n",
 			 (unsigned long)inode->i_ino,
 			 (unsigned long)inode->i_size,
-			 (unsigned long)ai->ai_first_block,
+			 #ifdef MULTI_BLOCK_PTR_SCHEME
+			 (unsigned long)ai->ai_zone_ptr[0],
+			 #else
+			 (unsigned long)ai->ai_zone_ptr,
+			 #endif
 			 (unsigned long)inode->i_blocks,
 			 (unsigned long)i_uid_read(inode),
 			 (unsigned long)i_gid_read(inode),

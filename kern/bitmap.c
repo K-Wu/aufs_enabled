@@ -94,7 +94,11 @@ struct inode *aufs_new_inode(const struct inode *dir, umode_t mode, int *error) 
 	inode->i_ino = j;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
 	inode->i_blocks = 0;
-	memset(&(AUFS_INODE(inode)->ai_first_block), 0, sizeof(AUFS_INODE(inode)->ai_first_block));
+	#ifdef MULTI_BLOCK_PTR_SCHEME
+	memset(&(AUFS_INODE(inode)->ai_zone_ptr[0]), 0, ZONE_PTR_IN_INODE_NUM*sizeof(AUFS_INODE(inode)->ai_zone_ptr));
+	#else
+	memset(&(AUFS_INODE(inode)->ai_zone_ptr), 0, sizeof(AUFS_INODE(inode)->ai_zone_ptr));
+	#endif
 	//memset(&minix_i(inode)->u, 0, sizeof(minix_i(inode)->u));
 	insert_inode_hash(inode);
 	mark_inode_dirty(inode);
