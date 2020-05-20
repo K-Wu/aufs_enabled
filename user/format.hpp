@@ -70,12 +70,6 @@ public:
 
 	void SetRootInode(Inode const &inode) noexcept;
 
-	// Do not use
-	// Inode MkDir(uint32_t entries);
-	// Inode MkFile(uint32_t size);
-	// uint32_t Write(Inode &inode, uint8_t const *data, uint32_t size);
-	// void AddChild(Inode &inode, char const *name, Inode const &ch);
-
 	Inode MkRootDir();
 
 private:

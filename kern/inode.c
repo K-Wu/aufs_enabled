@@ -12,7 +12,7 @@ static int aufs_get_block(struct inode *inode, sector_t iblock,
 {//create is 1 iff during a block_write_full_page and 0 iff during a block_read_full_page
 	
 	#ifdef MULTI_BLOCK_PTR_SCHEME
-	uint32_t aufs_block_size = AUFS_SB(inode->i_sb)->asb_block_size;
+	uint32_t aufs_block_size = AUFS_SB(inode->i_sb)->asb_zone_size;
 	uint32_t block_size_bits = ilog2(bh_result->b_size);
 	printk("warning: block_size_bits %d\n",block_size_bits);
 	if (bh_result->b_size!=BLOCK_SIZE){

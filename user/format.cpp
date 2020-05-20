@@ -194,12 +194,12 @@ void SuperBlock::FillSuper(BlocksCache &cache) noexcept
 			m_super_block->Data());
 
 	ASB_MAGIC(sb) = htonl(AUFS_MAGIC);
-	ASB_BLOCK_SIZE(sb) = htonl(cache.Config()->ZoneSize());
+	ASB_ZONE_SIZE(sb) = htonl(cache.Config()->ZoneSize());
 	ASB_ROOT_INODE(sb) = htonl(-1);
 	ASB_INODE_BLOCKS(sb) = htonl(cache.Config()->NumInodeEntryBlocks());
 	ASB_INODE_MAP_BLOCKS(sb) = htonl(1); //todo: support multiple-block inode maps
 	ASB_BLOCK_MAP_BLOCKS(sb) = htonl(1); //todo: support multiple-block zone maps
-	ASB_BLOCK_PER_ZONE(sb) = htonl(1);	 //todo: support non-1 block per zone
+	//ASB_BLOCK_PER_ZONE(sb) = htonl(1); //remove this unnecessary field	 //todo: support non-1 block per zone
 }
 
 void SuperBlock::FillBlockMap(BlocksCache &cache) noexcept
@@ -233,26 +233,6 @@ void Formatter::SetRootInode(Inode const &inode) noexcept
 {
 	m_super.SetRootInode(inode.InodeNo());
 }
-
-// Do not Use
-// Inode Formatter::MkDir(uint32_t entries)
-// {
-// 	uint32_t const bytes = entries * AUFS_DIR_SIZE;
-// 	uint32_t const blocks = (bytes + m_config->ZoneSize() - 1) /
-// 							m_config->ZoneSize();
-// 	Inode inode(m_cache, m_super.AllocateInode());
-// 	uint32_t block = m_super.AllocateZones(blocks);
-
-// 	inode.SetFirstBlock(block);
-// 	inode.ClearAllOtherZones();
-// 	inode.SetBlocksCount(blocks);
-// 	inode.SetSize(0);
-// 	inode.SetUid(getuid());
-// 	inode.SetGid(getgid());
-// 	inode.SetMode(493 | S_IFDIR);
-
-// 	return inode;
-// }
 
 Inode Formatter::MkRootDir()
 {
@@ -291,70 +271,3 @@ Inode Formatter::MkRootDir()
 
 	return inode;
 }
-
-// Do not Use
-// Inode Formatter::MkFile(uint32_t size)
-// {
-// 	uint32_t const blocks = (size + m_config->ZoneSize() - 1) /
-// 							m_config->ZoneSize();
-// 	Inode inode(m_cache, m_super.AllocateInode());
-// 	uint32_t block = m_super.AllocateZones(blocks);
-
-// 	inode.SetFirstBlock(block);
-// 	inode.ClearAllOtherZones();
-// 	inode.SetBlocksCount(blocks);//todo: check block count
-// 	inode.SetUid(getuid());
-// 	inode.SetGid(getgid());
-// 	inode.SetMode(493 | S_IFREG);
-
-// 	return inode;
-// }
-
-// Do not Use
-// uint32_t Formatter::Write(Inode &inode, uint8_t const *data, uint32_t size)
-// {
-// 	if (!(inode.Mode() & S_IFREG))
-// 		throw std::logic_error("it is not file");
-
-// 	uint32_t const left = inode.BlocksCount() * m_config->ZoneSize() -
-// 						  inode.Size();
-// 	if (left < size)
-// 		throw std::out_of_range("there is no enough space");
-
-// 	uint32_t const block = inode.FirstBlock() + inode.Size() /
-// 													m_config->ZoneSize();
-// 	uint32_t const offset = inode.Size() % m_config->ZoneSize();
-// 	uint32_t const towrite = std::min(size, m_config->ZoneSize() - offset);
-
-// 	BlockPtr bp = m_cache.GetBlock(block);
-// 	std::copy_n(data, towrite, bp->Data() + offset);
-// 	inode.SetSize(inode.Size() + towrite);
-
-// 	return towrite;
-// }
-
-// Do not use
-// void Formatter::AddChild(Inode &inode, char const *name, Inode const &ch)
-// {
-// 	if (!(inode.Mode() & S_IFDIR))
-// 		throw std::logic_error("it is not directory");
-
-// 	uint32_t const inblock = m_config->ZoneSize() / AUFS_DIR_SIZE;
-// 	uint32_t const entries = inode.BlocksCount() * inblock;
-// 	uint32_t const left = entries - inode.Size();
-
-// 	if (!left)
-// 		throw std::out_of_range("there is no enough space");
-
-// 	uint32_t const block = inode.FirstBlock() + inode.Size() / inblock;
-// 	uint32_t const offset = inode.Size() % inblock;
-
-// 	BlockPtr bp = m_cache.GetBlock(block);
-// 	struct aufs_disk_dir_entry *dp = reinterpret_cast<struct aufs_disk_dir_entry *>(
-// 										 bp->Data()) +
-// 									 offset;
-// 	strncpy(dp->dde_name, name, AUFS_NAME_MAXLEN - 1);
-// 	dp->dde_name[AUFS_NAME_MAXLEN - 1] = '\0';
-// 	dp->dde_inode = htonl(ch.InodeNo());
-// 	inode.SetSize(inode.Size() + 1);
-// }

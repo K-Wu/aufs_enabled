@@ -26,7 +26,7 @@ struct aufs_disk_super_block
 	__be32 dsb_inode_blocks;
 	__be32 dsb_inode_map_blocks;
 	__be32 dsb_zone_map_blocks;
-	__be32 dsb_blocks_per_zone;
+	//__be32 dsb_blocks_per_zone; //calculate zone_size/block_size other than load it
 };
 
 struct aufs_disk_inode
@@ -54,7 +54,7 @@ struct aufs_super_block
 {
 	unsigned long asb_magic;
 	unsigned long asb_inode_blocks; //number of blocks inode entries occupy
-	unsigned long asb_block_size;
+	unsigned long asb_zone_size;
 	unsigned long asb_root_inode;
 	unsigned long asb_inodes_in_block;
 	unsigned long asb_inode_map_blocks;

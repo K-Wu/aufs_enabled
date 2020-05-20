@@ -12,12 +12,12 @@ static uint32_t const AUFS_NAME_MAXLEN = 60;
 struct aufs_super_block
 {
 	uint32_t asb_magic;
-	uint32_t asb_block_size;
+	uint32_t asb_zone_size;
 	uint32_t asb_root_inode;
 	uint32_t asb_inode_blocks;
 	uint32_t asb_inode_map_blocks;
 	uint32_t asb_zone_map_blocks;
-	uint32_t asb_blocks_per_zone;
+	//uint32_t asb_blocks_per_zone;
 };
 
 static inline uint32_t &ASB_MAGIC(struct aufs_super_block *asb)
@@ -25,9 +25,9 @@ static inline uint32_t &ASB_MAGIC(struct aufs_super_block *asb)
 	return asb->asb_magic;
 }
 
-static inline uint32_t &ASB_BLOCK_SIZE(struct aufs_super_block *asb)
+static inline uint32_t &ASB_ZONE_SIZE(struct aufs_super_block *asb)
 {
-	return asb->asb_block_size;
+	return asb->asb_zone_size;
 }
 
 static inline uint32_t &ASB_ROOT_INODE(struct aufs_super_block *asb)
@@ -50,10 +50,10 @@ static inline uint32_t &ASB_BLOCK_MAP_BLOCKS(struct aufs_super_block *asb)
 	return asb->asb_zone_map_blocks;
 }
 
-static inline uint32_t &ASB_BLOCK_PER_ZONE(struct aufs_super_block *asb)
-{
-	return asb->asb_blocks_per_zone;
-}
+// static inline uint32_t &ASB_BLOCK_PER_ZONE(struct aufs_super_block *asb)
+// {
+// 	return asb->asb_blocks_per_zone;
+// }
 
 struct aufs_inode
 {
