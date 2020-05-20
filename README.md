@@ -3,19 +3,33 @@ aufs
 
 aufs - simple Linux kernel file system for SPbAU (http://mit.spbau.ru/) OS course.
 
-** How to format
+## How to format
+```
 mkfs.aufs /dev/nvme0n1
+```
 
-** make kern
+## make kern
+```
 sudo rmmod aufs && make clean && make -j && sudo insmod aufs.ko
+```
 
-** make user
+## make user
+```
 sudo blkdiscard /dev/nvme0n1
 make clean && make -j && sudo ./mkfs.aufs /dev/nvme0n1
+```
 
-** How to mount
+## How to mount
+```
 sudo mount /dev/nvme0n1 ~/aufsMountPoint
 sudo umount ~/aufsMountPoint/
+```
 
-** How to test
+## How to test
+This test assumes the nvme disk is already mounted before test.
+
+In test/, execute
+
+```
 dmesg >../logs/dmesg.log && sudo `which python` MultiBlockFSTest.py >../logs/MultiBlockFSTest.log && dmesg>../logs/dmesg.end.log
+···
