@@ -40,6 +40,7 @@ def do_write_read_test(file_name, file_name2, pos_list_beg, pos_list_end, pos_li
                 fd.seek(int(math.floor(pos_list_beg[w_idx] * block_char_num)))
                 file_curr_content=fd.read()[0:int(math.floor(pos_list_end[w_idx] * block_char_num))-int(math.floor(pos_list_beg[w_idx] * block_char_num))]
                 print("test idx: " + str(w_idx) + " file 1 result: " + str("".join(file_content[int(math.floor(pos_list_beg[w_idx] * block_char_num)):int(math.floor(pos_list_end[w_idx] * block_char_num))]) == file_curr_content))
+                string_inequality("".join(file_content[int(math.floor(pos_list_beg[w_idx] * block_char_num)):int(math.floor(pos_list_end[w_idx] * block_char_num))]),file_curr_content)
             else:#equaility test the whole file content
                 file_curr_content = fd.read()
                 print("test idx: " + str(w_idx) + " file 1 result: " + str(
@@ -69,7 +70,7 @@ def do_write_read_test(file_name, file_name2, pos_list_beg, pos_list_end, pos_li
             do_unmount_mount(mount_dev, mount_point)
 
 def seek_write_test():
-    block_size = 4  # in kb
+    block_size = 16#4  # in kb
     block_num = 7
     pos_list_beg = [1.2,4.1,2.4,4.7]
     pos_list_end = [2.4,4.7,4.1,7.0]
@@ -103,7 +104,7 @@ def seek_write_test():
 
 
 def sequential_write_test():
-    block_size = 4  # in kb
+    block_size = 16  # in kb
     block_num = 7
     pos_list = [0, 1.5, 3.3, 4.0, 4.7, 5.6, 7]
     pos_list2 = [0, 0.8, 1.0, 3.1, 4.5, 5.6, 7]
@@ -136,4 +137,4 @@ def sequential_write_test():
 
 if __name__ =="__main__":
     sequential_write_test()
-    #seek_write_test()
+    seek_write_test()
