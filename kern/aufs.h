@@ -3,12 +3,19 @@
 #include <linux/buffer_head.h>
 #include <linux/types.h>
 #include <linux/fs.h>
-
+//macros defined here is visible in all source files under ./kern
+#define MULTI_BLOCK_PTR_SCHEME
+#ifdef MULTI_BLOCK_PTR_SCHEME
+#define ZONE_PTR_IN_INODE_NUM 9
+#else
+#define ZONE_PTR_IN_INODE_NUM 1
+#endif
 #define AUFS_DDE_SIZE 32
 //#define AUFS_DDE_MAX_NAME_LEN (AUFS_DDE_SIZE - sizeof(__be32))
 
 static const unsigned long AUFS_MAGIC = 0x13131313;
 static const unsigned long AUFS_DIR_SIZE = 64;
+
 static const unsigned long AUFS_NAME_LEN = 60;
 
 struct aufs_disk_super_block
@@ -19,13 +26,17 @@ struct aufs_disk_super_block
 	__be32 dsb_inode_blocks;
 	__be32 dsb_inode_map_blocks;
 	__be32 dsb_zone_map_blocks;
-	__be32 dsb_blocks_per_zone;
+	//__be32 dsb_blocks_per_zone; //calculate zone_size/block_size other than load it
 };
 
 struct aufs_disk_inode
 {
-	__be32 di_first;
-	__be32 di_blocks; //inode->i_blocks does not use the same block granularity 4KiB as in block map or pagecache. it is 512B hard coded in the kernel. //todo: needs to update di_first and di_blocks once allocated and once write
+#ifdef MULTI_BLOCK_PTR_SCHEME
+	__be32 di_block_ptr[ZONE_PTR_IN_INODE_NUM];
+#else
+	__be32 di_block_ptr;
+#endif
+	__be32 di_blocks; //inode->i_blocks does not use the same block granularity 4KiB as in block map or pagecache. it is 512B hard coded in the kernel.
 	__be32 di_size;
 	__be32 di_gid;
 	__be32 di_uid;
@@ -42,8 +53,8 @@ struct aufs_disk_dir_entry
 struct aufs_super_block
 {
 	unsigned long asb_magic;
-	unsigned long asb_inode_blocks;
-	unsigned long asb_block_size;
+	unsigned long asb_inode_blocks; //number of blocks inode entries occupy
+	unsigned long asb_zone_size;
 	unsigned long asb_root_inode;
 	unsigned long asb_inodes_in_block;
 	unsigned long asb_inode_map_blocks;
@@ -61,8 +72,12 @@ static inline struct aufs_super_block *AUFS_SB(struct super_block *sb)
 
 struct aufs_inode
 {
+#ifdef MULTI_BLOCK_PTR_SCHEME
+	unsigned long ai_zone_ptr[ZONE_PTR_IN_INODE_NUM];
+#else
+	unsigned long ai_zone_ptr;
+#endif
 	struct inode ai_inode;
-	unsigned long ai_first_block;
 };
 
 static inline struct aufs_inode *AUFS_INODE(struct inode *inode)

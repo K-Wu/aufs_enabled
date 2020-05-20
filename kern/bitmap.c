@@ -7,8 +7,7 @@
 static DEFINE_SPINLOCK(bitmap_lock);
 
 int aufs_new_zone(struct inode *inode) //return the block id of the new zone
-{									   //vtodo: verify done: assimilate this //todo: verify
-									   //todo: originally need to memset 0 after new block (see itree_common.c. alloc_branch()). move that to block free
+{									   //todo: originally need to memset 0 after new block (see itree_common.c. alloc_branch()). move that to block free
 	struct aufs_super_block *sbi = AUFS_SB(inode->i_sb);
 	int bits_per_block = 8 * inode->i_sb->s_blocksize;
 	int i;
@@ -30,7 +29,7 @@ int aufs_new_zone(struct inode *inode) //return the block id of the new zone
 				break;
 
 			printk("aufs_new_zone block successfully gained id %d. (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks) %d\n", j, (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks));
-			return j+(1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks + 1);//bitmap numbering starts from the data block region (root inode 1 returns 1+68, etc.)
+			return j* (sbi->asb_blocks_per_zone)+(1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks + 1* (sbi->asb_blocks_per_zone));//bitmap numbering starts from the data block region (root inode 1 returns 1+68, etc.)
 		}
 		spin_unlock(&bitmap_lock);
 	}
@@ -94,7 +93,11 @@ struct inode *aufs_new_inode(const struct inode *dir, umode_t mode, int *error) 
 	inode->i_ino = j;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
 	inode->i_blocks = 0;
-	memset(&(AUFS_INODE(inode)->ai_first_block), 0, sizeof(AUFS_INODE(inode)->ai_first_block));
+	#ifdef MULTI_BLOCK_PTR_SCHEME
+	memset(AUFS_INODE(inode)->ai_zone_ptr, 0, ZONE_PTR_IN_INODE_NUM*sizeof(AUFS_INODE(inode)->ai_zone_ptr[0]));
+	#else
+	memset(&(AUFS_INODE(inode)->ai_zone_ptr), 0, sizeof(AUFS_INODE(inode)->ai_zone_ptr));
+	#endif
 	//memset(&minix_i(inode)->u, 0, sizeof(minix_i(inode)->u));
 	insert_inode_hash(inode);
 	mark_inode_dirty(inode);

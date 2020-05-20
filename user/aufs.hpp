@@ -5,19 +5,19 @@
 #include <cstring>
 #include <cstdint>
 //#include "../kern/aufs.h"
-
+#define ZONE_PTR_IN_INODE_NUM 9
 static uint32_t const AUFS_MAGIC = 0x13131313;
 static uint32_t const AUFS_NAME_MAXLEN = 60;
 
 struct aufs_super_block
 {
 	uint32_t asb_magic;
-	uint32_t asb_block_size;
+	uint32_t asb_zone_size;
 	uint32_t asb_root_inode;
 	uint32_t asb_inode_blocks;
 	uint32_t asb_inode_map_blocks;
 	uint32_t asb_zone_map_blocks;
-	uint32_t asb_blocks_per_zone;
+	//uint32_t asb_blocks_per_zone;
 };
 
 static inline uint32_t &ASB_MAGIC(struct aufs_super_block *asb)
@@ -25,9 +25,9 @@ static inline uint32_t &ASB_MAGIC(struct aufs_super_block *asb)
 	return asb->asb_magic;
 }
 
-static inline uint32_t &ASB_BLOCK_SIZE(struct aufs_super_block *asb)
+static inline uint32_t &ASB_ZONE_SIZE(struct aufs_super_block *asb)
 {
-	return asb->asb_block_size;
+	return asb->asb_zone_size;
 }
 
 static inline uint32_t &ASB_ROOT_INODE(struct aufs_super_block *asb)
@@ -50,14 +50,14 @@ static inline uint32_t &ASB_BLOCK_MAP_BLOCKS(struct aufs_super_block *asb)
 	return asb->asb_zone_map_blocks;
 }
 
-static inline uint32_t &ASB_BLOCK_PER_ZONE(struct aufs_super_block *asb)
-{
-	return asb->asb_blocks_per_zone;
-}
+// static inline uint32_t &ASB_BLOCK_PER_ZONE(struct aufs_super_block *asb)
+// {
+// 	return asb->asb_blocks_per_zone;
+// }
 
 struct aufs_inode
 {
-	uint32_t ai_first;
+	uint32_t ai_zone_ptr[ZONE_PTR_IN_INODE_NUM];
 	uint32_t ai_blocks;
 	uint32_t ai_size;
 	uint32_t ai_gid;
@@ -66,10 +66,16 @@ struct aufs_inode
 	uint64_t ai_ctime;
 };
 
-static inline uint32_t &AI_FIRST_BLOCK(struct aufs_inode *ai)
+static inline uint32_t &AI_ZONE_PTR_FIRST(struct aufs_inode *ai)
 {
-	return ai->ai_first;
+	return ai->ai_zone_ptr[0];
 }
+
+static inline uint32_t* AI_ZONE_PTR(struct aufs_inode *ai)
+{
+	return ai->ai_zone_ptr;
+}
+
 
 static inline uint32_t &AI_BLOCKS(struct aufs_inode *ai)
 {

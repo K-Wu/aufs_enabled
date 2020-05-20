@@ -13,6 +13,8 @@ public:
 	uint32_t FirstBlock() const noexcept;
 	void SetFirstBlock(uint32_t block) noexcept;
 
+	void ClearAllOtherZones() noexcept;
+
 	uint32_t BlocksCount() const noexcept;
 	void SetBlocksCount(uint32_t count) noexcept;
 
@@ -45,7 +47,7 @@ public:
 	explicit SuperBlock(BlocksCache &cache);
 
 	uint32_t AllocateInode() noexcept;
-	uint32_t AllocateBlocks(size_t blocks) noexcept;
+	uint32_t AllocateZones(size_t blocks) noexcept;
 	void SetRootInode(uint32_t root) noexcept;
 
 private:
@@ -54,7 +56,7 @@ private:
 	void FillInodeMap(BlocksCache &Cache) noexcept;
 
 	BlockPtr m_super_block;
-	BlockPtr m_block_map;
+	BlockPtr m_zone_map;
 	BlockPtr m_inode_map;
 };
 
@@ -67,12 +69,7 @@ public:
 	}
 
 	void SetRootInode(Inode const &inode) noexcept;
-	Inode MkDir(uint32_t entries);
-	Inode MkFile(uint32_t size);
 
-	uint32_t Write(Inode &inode, uint8_t const *data, uint32_t size);
-
-	void AddChild(Inode &inode, char const *name, Inode const &ch);
 	Inode MkRootDir();
 
 private:

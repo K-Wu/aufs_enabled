@@ -33,15 +33,18 @@ static struct super_operations const aufs_super_ops = {
 static inline void aufs_super_block_fill(struct aufs_super_block *asb,
 										 struct aufs_disk_super_block const *dsb)
 {
+	int block_size = (asb->asb_zone_size>4096)?(asb->asb_zone_size):4096;
 	asb->asb_magic = be32_to_cpu(dsb->dsb_magic);
 	asb->asb_inode_blocks = be32_to_cpu(dsb->dsb_inode_blocks);
-	asb->asb_block_size = be32_to_cpu(dsb->dsb_block_size);
+	asb->asb_zone_size = be32_to_cpu(dsb->dsb_block_size);
 	asb->asb_root_inode = be32_to_cpu(dsb->dsb_root_inode);
 	asb->asb_inode_map_blocks = be32_to_cpu(dsb->dsb_inode_map_blocks);
 	asb->asb_zone_map_blocks = be32_to_cpu(dsb->dsb_zone_map_blocks);
-	asb->asb_inodes_in_block =
-		asb->asb_block_size / sizeof(struct aufs_disk_inode);
-	asb->asb_blocks_per_zone = be32_to_cpu(dsb->dsb_blocks_per_zone);
+	
+	//asb->asb_blocks_per_zone = be32_to_cpu(dsb->dsb_blocks_per_zone);
+	asb->asb_blocks_per_zone = (asb->asb_zone_size>4096)?(asb->asb_zone_size/4096):1;
+	asb->asb_inodes_in_block = 
+		block_size / sizeof(struct aufs_disk_inode);
 }
 
 static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
@@ -109,7 +112,7 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 	printk("aufs super block info:\n"
 			 "\tmagic           = %lu\n"
 			 "\tinode blocks    = %lu\n"
-			 "\tblock size      = %lu\n"
+			 "\tzone size      = %lu\n"
 			 "\troot inode      = %lu\n"
 			 "\tinodes in block = %lu\n"
 			 "\tblocks per zone = %lu\n"
@@ -117,7 +120,7 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 			 "\tzone map blocks = %lu\n",
 			 (unsigned long)asb->asb_magic,
 			 (unsigned long)asb->asb_inode_blocks,
-			 (unsigned long)asb->asb_block_size,
+			 (unsigned long)asb->asb_zone_size,
 			 (unsigned long)asb->asb_root_inode,
 			 (unsigned long)asb->asb_inodes_in_block,
 			 (unsigned long)asb->asb_blocks_per_zone,
@@ -155,23 +158,24 @@ static int aufs_fill_sb(struct super_block *sb, void *data, int silent)
 {
 	struct aufs_super_block *asb = aufs_super_block_read(sb);
 	struct inode *root;
+	int sb_blocksize= asb->asb_zone_size>4096?4096:asb->asb_zone_size;
 
 	if (!asb)
 		return -EINVAL;
 
 	sb->s_magic = asb->asb_magic;
 	sb->s_fs_info = asb;
+	
+	if (!sb_set_blocksize(sb, sb_blocksize)){
+		pr_err("device does not support zone size %lu\n",
+			   (unsigned long)asb->asb_zone_size);
+		return -EINVAL;
+		}
 	sb->s_op = &aufs_super_ops;
 
 	//sb->s_time_min = 0;
 	//sb->s_time_max = U32_MAX;
 
-	if (sb_set_blocksize(sb, asb->asb_block_size) == 0)
-	{
-		pr_err("device does not support block size %lu\n",
-			   (unsigned long)asb->asb_block_size);
-		return -EINVAL;
-	}
 
 	root = aufs_inode_get(sb, asb->asb_root_inode);
 	if (IS_ERR(root))
