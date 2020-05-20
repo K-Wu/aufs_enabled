@@ -33,16 +33,18 @@ static struct super_operations const aufs_super_ops = {
 static inline void aufs_super_block_fill(struct aufs_super_block *asb,
 										 struct aufs_disk_super_block const *dsb)
 {
+	int block_size = (asb->asb_zone_size>4096)?(asb->asb_zone_size):4096;
 	asb->asb_magic = be32_to_cpu(dsb->dsb_magic);
 	asb->asb_inode_blocks = be32_to_cpu(dsb->dsb_inode_blocks);
 	asb->asb_zone_size = be32_to_cpu(dsb->dsb_block_size);
 	asb->asb_root_inode = be32_to_cpu(dsb->dsb_root_inode);
 	asb->asb_inode_map_blocks = be32_to_cpu(dsb->dsb_inode_map_blocks);
 	asb->asb_zone_map_blocks = be32_to_cpu(dsb->dsb_zone_map_blocks);
-	asb->asb_inodes_in_block = //TODO: in_block or in_zone?
-		asb->asb_zone_size / sizeof(struct aufs_disk_inode);
+	
 	//asb->asb_blocks_per_zone = be32_to_cpu(dsb->dsb_blocks_per_zone);
 	asb->asb_blocks_per_zone = (asb->asb_zone_size>4096)?(asb->asb_zone_size/4096):1;
+	asb->asb_inodes_in_block = 
+		block_size / sizeof(struct aufs_disk_inode);
 }
 
 static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
