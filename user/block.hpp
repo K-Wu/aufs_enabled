@@ -9,7 +9,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
-
+#include <iostream>
 #include "aufs.hpp"
 
 class Configuration
@@ -19,7 +19,7 @@ public:
 						   std::string dir,
 						   uint32_t blocks,
 						   uint32_t block_size) noexcept
-		: m_device(device), m_dir(dir), m_device_blocks(blocks), m_block_size(block_size), m_inode_blocks(CountInodeBlocks())
+		: m_device(device), m_dir(dir), m_device_zones(blocks), m_zone_size(block_size), m_inode_blocks(CountInodeEntryBlocks())
 	{
 	}
 
@@ -33,28 +33,33 @@ public:
 		return m_dir;
 	}
 
-	uint32_t Blocks() const noexcept
+	uint32_t Zones() const noexcept
 	{
-		return m_device_blocks;
+		return m_device_zones;
 	}
 
-	uint32_t InodeBlocks() const noexcept
+	uint32_t NumInodeEntryBlocks() const noexcept
 	{
+		std::cout << "inode blocks: " << m_inode_blocks << std::endl;
 		return m_inode_blocks;
+	}
+
+	uint32_t ZoneSize() const noexcept
+	{
+		return m_zone_size;
 	}
 
 	uint32_t BlockSize() const noexcept
 	{
-		return m_block_size;
+		return (m_zone_size > 4096) ? 4096 : m_zone_size;
 	}
 
 private:
-	uint32_t CountInodeBlocks() const noexcept
+	uint32_t CountInodeEntryBlocks() const noexcept
 	{
-		static uint32_t const BytesPerInode = 16384u;
-
-		uint32_t const bytes = Blocks() * BlockSize();
-		uint32_t const inodes = bytes / BytesPerInode;
+		std::cout << "Zones() " << Zones() << "\n";
+		uint32_t const inodes = std::min(Zones(), BlockSize() * 8);
+		std::cout << "BLOCK SIZE " << BlockSize() << " , ZoneSize(): " << ZoneSize() << " in CountInodeBLocks: \n";
 		uint32_t const in_block = BlockSize() /
 								  sizeof(struct aufs_inode);
 
@@ -63,8 +68,8 @@ private:
 
 	std::string m_device;
 	std::string m_dir;
-	uint32_t m_device_blocks;
-	uint32_t m_block_size;
+	uint32_t m_device_zones;
+	uint32_t m_zone_size;
 	uint32_t m_inode_blocks;
 };
 

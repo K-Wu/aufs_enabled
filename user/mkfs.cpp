@@ -20,9 +20,9 @@ size_t DeviceSize(std::string const &device)
 	return static_cast<size_t>(size);
 }
 
-bool VerifyBlocks(ConfigurationConstPtr config)
+bool VerifyZones(ConfigurationConstPtr config)
 {
-	if (config->Blocks() <= 3)
+	if (config->Zones() <= 3)
 		return false;
 
 	return true;
@@ -32,21 +32,21 @@ bool VerifyDevice(ConfigurationConstPtr config)
 {
 	size_t const size = DeviceSize(config->Device());
 
-	if (size < config->Blocks() * config->BlockSize())
+	if (size < config->Zones() * config->ZoneSize())
 		return false;
 
 	return true;
 }
 
-bool VerifyBlockSize(ConfigurationConstPtr config)
+bool VerifyZoneSize(ConfigurationConstPtr config)
 {
-	if (config->BlockSize() != 512u && config->BlockSize() != 1024u &&
-		config->BlockSize() != 2048u && config->BlockSize() != 4096u)
+	if (config->ZoneSize() != 512u && config->ZoneSize() != 1024u &&
+		config->ZoneSize() != 2048u && config->ZoneSize() != 4096u && config->ZoneSize() != 16384u)
 		return false;
 
-	if (config->BlockSize() * 8 < config->Blocks())
-		std::cout << "WARNING: With block size = "
-				  << config->BlockSize() << " blocks number should be "
+	if (config->BlockSize() * 8 < config->Zones())
+		std::cout << "WARNING: With zone size = "
+				  << config->ZoneSize() << " zones number should be "
 				  << "less or equal to " << config->BlockSize() * 8
 				  << std::endl;
 
@@ -55,11 +55,11 @@ bool VerifyBlockSize(ConfigurationConstPtr config)
 
 ConfigurationConstPtr VerifyConfiguration(ConfigurationConstPtr config)
 {
-	if (!VerifyBlockSize(config))
-		throw std::runtime_error("Unsupported block size");
+	if (!VerifyZoneSize(config))
+		throw std::runtime_error("Unsupported zone size");
 
-	if (!VerifyBlocks(config))
-		throw std::runtime_error("Wrong number of blocks");
+	if (!VerifyZones(config))
+		throw std::runtime_error("Wrong number of zones");
 
 	if (!VerifyDevice(config))
 		throw std::runtime_error("Device is too small");
@@ -70,7 +70,7 @@ ConfigurationConstPtr VerifyConfiguration(ConfigurationConstPtr config)
 void PrintHelp()
 {
 	std::cout << "Usage:" << std::endl
-			  << "\tmkfs.aufs [(--block_size | -s) SIZE] [(--blocks | -b) BLOCKS] DEVICE"
+			  << "\tmkfs.aufs [(--zone_size | -s) SIZE] [(--blocks | -b) BLOCKS] DEVICE"
 			  << std::endl
 			  << std::endl
 			  << "Where:" << std::endl
@@ -82,6 +82,7 @@ void PrintHelp()
 ConfigurationConstPtr ParseArgs(int argc, char **argv)
 {
 	std::string device, dir;
+	size_t zone_size = 16384u;
 	size_t block_size = 4096u;
 	size_t blocks = 0;
 
@@ -93,9 +94,9 @@ ConfigurationConstPtr ParseArgs(int argc, char **argv)
 			blocks = std::stoi(*argv++);
 			--argc;
 		}
-		else if ((arg == "--block_size" || arg == "-s") && argc)
+		else if ((arg == "--zone_size" || arg == "-s") && argc)
 		{
-			block_size = std::stoi(*argv++);
+			zone_size = std::stoi(*argv++);
 			--argc;
 		}
 		else if ((arg == "--dir" || arg == "-d") && argc)
@@ -117,70 +118,72 @@ ConfigurationConstPtr ParseArgs(int argc, char **argv)
 		throw std::runtime_error("Device name expected");
 
 	if (blocks == 0)
-		blocks = std::min(DeviceSize(device) / block_size, block_size * 8);
+		blocks = std::min(DeviceSize(device) / zone_size, block_size * 8);
 
 	ConfigurationConstPtr config = std::make_shared<Configuration>(
-		device, dir, blocks, block_size);
+		device, dir, blocks, zone_size);
 
 	return VerifyConfiguration(config);
 }
 
-Inode CopyFile(Formatter &fmt, std::string const &path)
-{
-	std::vector<char> data;
-	std::ifstream file(path, std::ios::binary);
-	if (!file)
-		throw std::runtime_error("cannot open file");
-	std::istream_iterator<char> b(file), e;
-	std::copy(b, e, std::back_inserter(data));
+// Do not Use
+// Inode CopyFile(Formatter &fmt, std::string const &path)
+// {
+// 	std::vector<char> data;
+// 	std::ifstream file(path, std::ios::binary);
+// 	if (!file)
+// 		throw std::runtime_error("cannot open file");
+// 	std::istream_iterator<char> b(file), e;
+// 	std::copy(b, e, std::back_inserter(data));
 
-	Inode inode = fmt.MkFile(data.size());
-	size_t written = 0;
-	while (written != data.size())
-	{
-		written += fmt.Write(inode,
-							 reinterpret_cast<uint8_t const *>(data.data()) +
-								 written,
-							 data.size() - written);
-	}
+// 	Inode inode = fmt.MkFile(data.size());
+// 	size_t written = 0;
+// 	while (written != data.size())
+// 	{
+// 		written += fmt.Write(inode,
+// 							 reinterpret_cast<uint8_t const *>(data.data()) +
+// 								 written,
+// 							 data.size() - written);
+// 	}
 
-	return inode;
-}
+// 	return inode;
+// }
 
-Inode CopyDir(Formatter &fmt, std::string const &path)
-{
-	std::vector<std::string> entries;
-	struct dirent entry, *entryp = &entry;
-	std::unique_ptr<DIR, int (*)(DIR *)> dirp(opendir(path.c_str()),
-											  &closedir);
-	if (!dirp.get())
-		throw std::runtime_error("cannot open dir");
+// Do not Use.
+// Inode CopyDir(Formatter &fmt, std::string const &path)
+// {
+// 	std::vector<std::string> entries;
+// 	struct dirent entry, *entryp = &entry;
+// 	std::unique_ptr<DIR, int (*)(DIR *)> dirp(opendir(path.c_str()),
+// 											  &closedir);
+// 	if (!dirp.get())
+// 		throw std::runtime_error("cannot open dir");
 
-	while (entryp)
-	{
-		//readdir_r(dirp.get(), &entry, &entryp);
-		readdir(dirp.get());
-		if (entryp && strcmp(entry.d_name, ".") && strcmp(entry.d_name, ".."))
-			entries.push_back(std::string(entry.d_name)
-								  .substr(0, AUFS_NAME_MAXLEN - 1));
-	}
+// 	while (entryp)
+// 	{
+// 		//readdir_r(dirp.get(), &entry, &entryp);
+// 		readdir(dirp.get());
+// 		if (entryp && strcmp(entry.d_name, ".") && strcmp(entry.d_name, ".."))
+// 			entries.push_back(std::string(entry.d_name)
+// 								  .substr(0, AUFS_NAME_MAXLEN - 1));
+// 	}
 
-	Inode inode = fmt.MkDir(entries.size());
-	for (std::string const &entry : entries)
-	{
-		struct stat buffer;
-		if (stat((path + "/" + entry).c_str(), &buffer))
-			continue;
-		if (buffer.st_mode & S_IFDIR)
-			fmt.AddChild(inode, entry.c_str(),
-						 CopyDir(fmt, path + "/" + entry));
-		else
-			fmt.AddChild(inode, entry.c_str(),
-						 CopyFile(fmt, path + "/" + entry));
-	}
+// 	Inode inode = fmt.MkDir(entries.size());
+// 	for (std::string const &entry : entries)
+// 	{
+// 		struct stat buffer;
+// 		if (stat((path + "/" + entry).c_str(), &buffer))
+// 			continue;
+// 		if (buffer.st_mode & S_IFDIR)
+// 			fmt.AddChild(inode, entry.c_str(),
+// 						 CopyDir(fmt, path + "/" + entry));
+// 		else
+// 			fmt.AddChild(inode, entry.c_str(),
+// 						 CopyFile(fmt, path + "/" + entry));
+// 	}
 
-	return inode;
-}
+// 	return inode;
+// }
 
 int main(int argc, char **argv)
 {

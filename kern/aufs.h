@@ -31,11 +31,11 @@ struct aufs_disk_super_block
 
 struct aufs_disk_inode
 {
-	#ifdef MULTI_BLOCK_PTR_SCHEME
+#ifdef MULTI_BLOCK_PTR_SCHEME
 	__be32 di_block_ptr[ZONE_PTR_IN_INODE_NUM];
-	#else
+#else
 	__be32 di_block_ptr;
-	#endif
+#endif
 	__be32 di_blocks; //inode->i_blocks does not use the same block granularity 4KiB as in block map or pagecache. it is 512B hard coded in the kernel.
 	__be32 di_size;
 	__be32 di_gid;
@@ -53,7 +53,7 @@ struct aufs_disk_dir_entry
 struct aufs_super_block
 {
 	unsigned long asb_magic;
-	unsigned long asb_inode_blocks;
+	unsigned long asb_inode_blocks; //number of blocks inode entries occupy
 	unsigned long asb_block_size;
 	unsigned long asb_root_inode;
 	unsigned long asb_inodes_in_block;
@@ -72,11 +72,11 @@ static inline struct aufs_super_block *AUFS_SB(struct super_block *sb)
 
 struct aufs_inode
 {
-	#ifdef MULTI_BLOCK_PTR_SCHEME
+#ifdef MULTI_BLOCK_PTR_SCHEME
 	unsigned long ai_zone_ptr[ZONE_PTR_IN_INODE_NUM];
-	#else
+#else
 	unsigned long ai_zone_ptr;
-	#endif
+#endif
 	struct inode ai_inode;
 };
 

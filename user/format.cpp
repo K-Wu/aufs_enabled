@@ -8,18 +8,19 @@
 #include "bit_iterator.hpp"
 #include "format.hpp"
 
+#include <iostream>
 
 namespace
 {
 
-// uint64_t ntohll(uint64_t n)
-// {
-// 	uint64_t test = 1ull;
-// 	if (*(char *)&test == 1ull)
-// 		return (static_cast<uint64_t>(htonl(n & 0xffffffff)) << 32u) | static_cast<uint64_t>(htonl(n >> 32u));
-// 	else
-// 		return n;
-// }
+	// uint64_t ntohll(uint64_t n)
+	// {
+	// 	uint64_t test = 1ull;
+	// 	if (*(char *)&test == 1ull)
+	// 		return (static_cast<uint64_t>(htonl(n & 0xffffffff)) << 32u) | static_cast<uint64_t>(htonl(n >> 32u));
+	// 	else
+	// 		return n;
+	// }
 
 } // namespace
 
@@ -36,78 +37,81 @@ uint32_t Inode::InodeNo() const noexcept
 
 uint32_t Inode::FirstBlock() const noexcept
 {
-	return __be32_to_cpu(AI_ZONE_PTR_FIRST(m_raw));//todo: remove ntohl(AI_ZONE_PTR_FIRST(m_raw));
+	return __be32_to_cpu(AI_ZONE_PTR_FIRST(m_raw)); //todo: remove ntohl(AI_ZONE_PTR_FIRST(m_raw));
 }
 
 void Inode::SetFirstBlock(uint32_t block) noexcept
 {
-	AI_ZONE_PTR_FIRST(m_raw) = __cpu_to_be32(block);//todo: remove ntohl(block);
+	AI_ZONE_PTR_FIRST(m_raw) = __cpu_to_be32(block); //todo: remove ntohl(block);
 }
 
-void Inode::ClearAllOtherZones() noexcept{
-	for (int idx_loop_zone_ptr=1;idx_loop_zone_ptr<ZONE_PTR_IN_INODE_NUM;idx_loop_zone_ptr++){
-		AI_ZONE_PTR(m_raw)[idx_loop_zone_ptr]=__cpu_to_be32(0);
+void Inode::ClearAllOtherZones() noexcept
+{
+	for (int idx_loop_zone_ptr = 1; idx_loop_zone_ptr < ZONE_PTR_IN_INODE_NUM; idx_loop_zone_ptr++)
+	{
+		AI_ZONE_PTR(m_raw)
+		[idx_loop_zone_ptr] = __cpu_to_be32(0);
 	}
 }
 
 uint32_t Inode::BlocksCount() const noexcept
 {
-	return __be32_to_cpu(AI_BLOCKS(m_raw));//todo: remove ntohl(AI_BLOCKS(m_raw));
+	return __be32_to_cpu(AI_BLOCKS(m_raw)); //todo: remove ntohl(AI_BLOCKS(m_raw));
 }
 
 void Inode::SetBlocksCount(uint32_t count) noexcept
 {
-	AI_BLOCKS(m_raw) = __cpu_to_be32(count);//todo: remove ntohl(count);
+	AI_BLOCKS(m_raw) = __cpu_to_be32(count); //todo: remove ntohl(count);
 }
 
 uint32_t Inode::Size() const noexcept
 {
-	return __be32_to_cpu(AI_SIZE(m_raw));//todo: remove ntohl(AI_SIZE(m_raw));
+	return __be32_to_cpu(AI_SIZE(m_raw)); //todo: remove ntohl(AI_SIZE(m_raw));
 }
 
 void Inode::SetSize(uint32_t size) noexcept
 {
-	AI_SIZE(m_raw) = __cpu_to_be32(size);//todo: remove ntohl(size);
+	AI_SIZE(m_raw) = __cpu_to_be32(size); //todo: remove ntohl(size);
 }
 
 uint32_t Inode::Gid() const noexcept
 {
-	return __be32_to_cpu(AI_GID(m_raw));//todo: remove ntohl(AI_GID(m_raw));
+	return __be32_to_cpu(AI_GID(m_raw)); //todo: remove ntohl(AI_GID(m_raw));
 }
 
 void Inode::SetGid(uint32_t gid) noexcept
 {
-	AI_GID(m_raw) = __cpu_to_be32(gid);//todo: remove ntohl(gid);
+	AI_GID(m_raw) = __cpu_to_be32(gid); //todo: remove ntohl(gid);
 }
 
 uint32_t Inode::Uid() const noexcept
 {
-	return __be32_to_cpu(AI_UID(m_raw));//todo: remove ntohl(AI_UID(m_raw));
+	return __be32_to_cpu(AI_UID(m_raw)); //todo: remove ntohl(AI_UID(m_raw));
 }
 
 void Inode::SetUid(uint32_t uid) noexcept
 {
-	AI_UID(m_raw) = __cpu_to_be32(uid);//todo: remove ntohl(uid);
+	AI_UID(m_raw) = __cpu_to_be32(uid); //todo: remove ntohl(uid);
 }
 
 uint32_t Inode::Mode() const noexcept
 {
-	return __be32_to_cpu(AI_MODE(m_raw));//todo: remove ntohl(AI_MODE(m_raw));
+	return __be32_to_cpu(AI_MODE(m_raw)); //todo: remove ntohl(AI_MODE(m_raw));
 }
 
 void Inode::SetMode(uint32_t mode) noexcept
 {
-	AI_MODE(m_raw) = __cpu_to_be32(mode);//todo: remove ntohl(mode);
+	AI_MODE(m_raw) = __cpu_to_be32(mode); //todo: remove ntohl(mode);
 }
 
 uint64_t Inode::CreateTime() const noexcept
 {
-	return __be64_to_cpu(AI_CTIME(m_raw));//todo: remove ntohll(AI_CTIME(m_raw));
+	return __be64_to_cpu(AI_CTIME(m_raw)); //todo: remove ntohll(AI_CTIME(m_raw));
 }
 
 void Inode::SetCreateTime(uint64_t ctime) noexcept
 {
-	AI_CTIME(m_raw) = __cpu_to_be64(ctime);//todo: remove ntohll(ctime);
+	AI_CTIME(m_raw) = __cpu_to_be64(ctime); //todo: remove ntohll(ctime);
 }
 
 void Inode::FillInode(BlocksCache &cache)
@@ -117,7 +121,7 @@ void Inode::FillInode(BlocksCache &cache)
 	size_t const block = InodeNo() / in_block + 3; //todo: modify according to 1+zoneMap+blockMap+inodeMap
 	size_t const index = InodeNo() % in_block;
 	size_t const offset = index * sizeof(struct aufs_inode);
-
+	std::cout << "fill inode block: " << block << " index: " << index << "oofset: " << offset << "\n";
 	m_block = cache.GetBlock(block);
 	m_raw = reinterpret_cast<struct aufs_inode *>(m_block->Data() + offset);
 	//AI_CTIME(m_raw) = ntohll(time(NULL));
@@ -125,7 +129,7 @@ void Inode::FillInode(BlocksCache &cache)
 }
 
 SuperBlock::SuperBlock(BlocksCache &cache)
-	: m_super_block(cache.GetBlock(0)), m_block_map(cache.GetBlock(1)), m_inode_map(cache.GetBlock(2))
+	: m_super_block(cache.GetBlock(0)), m_zone_map(cache.GetBlock(1)), m_inode_map(cache.GetBlock(2))
 {
 	FillBlockMap(cache);
 	FillInodeMap(cache);
@@ -150,18 +154,18 @@ uint32_t SuperBlock::AllocateInode() noexcept
 	return 0;
 }
 
-uint32_t SuperBlock::AllocateBlocks(size_t blocks) noexcept
+uint32_t SuperBlock::AllocateZones(size_t zones) noexcept
 {
-	BitIterator const e(m_block_map->Data() + m_block_map->Size() * 8, 0);
-	BitIterator const b(m_block_map->Data(), 0);
+	BitIterator const e(m_zone_map->Data() + m_zone_map->Size() * 8, 0);
+	BitIterator const b(m_zone_map->Data(), 0);
 
 	BitIterator it = std::find(b, e, false);
 	while (it != e)
 	{
 		BitIterator jt = std::find(it, e, true);
-		if (static_cast<size_t>(jt - it) >= blocks)
+		if (static_cast<size_t>(jt - it) >= zones)
 		{
-			std::fill(it, it + blocks, true);
+			std::fill(it, it + zones, true);
 			return it - b;
 		}
 		it = jt;
@@ -169,7 +173,7 @@ uint32_t SuperBlock::AllocateBlocks(size_t blocks) noexcept
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wterminate"
-	throw std::runtime_error("Cannot allocate blocks");
+	throw std::runtime_error("Cannot allocate zones");
 #pragma GCC diagnostic pop
 	return 0;
 }
@@ -190,9 +194,9 @@ void SuperBlock::FillSuper(BlocksCache &cache) noexcept
 			m_super_block->Data());
 
 	ASB_MAGIC(sb) = htonl(AUFS_MAGIC);
-	ASB_BLOCK_SIZE(sb) = htonl(cache.Config()->BlockSize());
+	ASB_BLOCK_SIZE(sb) = htonl(cache.Config()->ZoneSize());
 	ASB_ROOT_INODE(sb) = htonl(-1);
-	ASB_INODE_BLOCKS(sb) = htonl(cache.Config()->InodeBlocks());
+	ASB_INODE_BLOCKS(sb) = htonl(cache.Config()->NumInodeEntryBlocks());
 	ASB_INODE_MAP_BLOCKS(sb) = htonl(1); //todo: support multiple-block inode maps
 	ASB_BLOCK_MAP_BLOCKS(sb) = htonl(1); //todo: support multiple-block zone maps
 	ASB_BLOCK_PER_ZONE(sb) = htonl(1);	 //todo: support non-1 block per zone
@@ -200,13 +204,13 @@ void SuperBlock::FillSuper(BlocksCache &cache) noexcept
 
 void SuperBlock::FillBlockMap(BlocksCache &cache) noexcept
 {
-	size_t const blocks = std::min(cache.Config()->Blocks(),
+	size_t const blocks = std::min(cache.Config()->Zones(),
 								   cache.Config()->BlockSize() * 8);
 	//size_t const blocks= cache.Config()->Blocks();//todo: support multiple-block zone maps
 	//size_t const inode_blocks = cache.Config()->InodeBlocks();
 
-	BitIterator const it(m_block_map->Data(), 0);
-	std::fill(it, it+1, true);	//std::fill(it, it + 3 + inode_blocks + 2, true);			  //todo: support multiple-block zone maps
+	BitIterator const it(m_zone_map->Data(), 0);
+	std::fill(it, it + 1, true);		   //std::fill(it, it + 3 + inode_blocks + 2, true);			  //todo: support multiple-block zone maps
 	std::fill(it + 1, it + blocks, false); //std::fill(it + 3 + inode_blocks + 2, it + blocks, false); //2: 1 fore root inode and 1 for badblock
 	std::fill(it + blocks, it + cache.Config()->BlockSize() * 8, true);
 }
@@ -215,14 +219,14 @@ void SuperBlock::FillInodeMap(BlocksCache &cache) noexcept
 {
 	uint32_t const in_block =
 		cache.Config()->BlockSize() / sizeof(struct aufs_inode);
-	uint32_t const inode_blocks = cache.Config()->InodeBlocks();
-	uint32_t const inodes = std::min(inode_blocks * in_block,
-									 cache.Config()->BlockSize() * 8); //todo: support multiple-block zone maps
+	uint32_t const inode_blocks = cache.Config()->NumInodeEntryBlocks();
+	uint32_t const num_inodes = std::min(inode_blocks * in_block,
+										 cache.Config()->BlockSize() * 8); //todo: support multiple-block zone maps
 
 	BitIterator const it(m_inode_map->Data(), 0);
 	std::fill(it, it + 1, true);
-	std::fill(it + 1, it + inodes, false);
-	std::fill(it + inodes, it + cache.Config()->BlockSize() * 8, true);
+	std::fill(it + 1, it + num_inodes, false);
+	std::fill(it + num_inodes, it + cache.Config()->BlockSize() * 8, true);
 }
 
 void Formatter::SetRootInode(Inode const &inode) noexcept
@@ -230,38 +234,42 @@ void Formatter::SetRootInode(Inode const &inode) noexcept
 	m_super.SetRootInode(inode.InodeNo());
 }
 
-Inode Formatter::MkDir(uint32_t entries)
-{
-	uint32_t const bytes = entries * AUFS_DIR_SIZE;
-	uint32_t const blocks = (bytes + m_config->BlockSize() - 1) /
-							m_config->BlockSize();
-	Inode inode(m_cache, m_super.AllocateInode());
-	uint32_t block = m_super.AllocateBlocks(blocks);
+// Do not Use
+// Inode Formatter::MkDir(uint32_t entries)
+// {
+// 	uint32_t const bytes = entries * AUFS_DIR_SIZE;
+// 	uint32_t const blocks = (bytes + m_config->ZoneSize() - 1) /
+// 							m_config->ZoneSize();
+// 	Inode inode(m_cache, m_super.AllocateInode());
+// 	uint32_t block = m_super.AllocateZones(blocks);
 
-	inode.SetFirstBlock(block);
-	inode.ClearAllOtherZones();
-	inode.SetBlocksCount(blocks);
-	inode.SetSize(0);
-	inode.SetUid(getuid());
-	inode.SetGid(getgid());
-	inode.SetMode(493 | S_IFDIR);
+// 	inode.SetFirstBlock(block);
+// 	inode.ClearAllOtherZones();
+// 	inode.SetBlocksCount(blocks);
+// 	inode.SetSize(0);
+// 	inode.SetUid(getuid());
+// 	inode.SetGid(getgid());
+// 	inode.SetMode(493 | S_IFDIR);
 
-	return inode;
-}
-#include <iostream>
+// 	return inode;
+// }
+
 Inode Formatter::MkRootDir()
 {
 	uint32_t const bytes = 2 * AUFS_DIR_SIZE;
-	uint32_t const blocks = (bytes + m_config->BlockSize() - 1) /
-							m_config->BlockSize();
-	Inode inode(m_cache, m_super.AllocateInode());
-	uint32_t block = m_super.AllocateBlocks(blocks)+1+m_config->InodeBlocks()+1+1;//todo: support multiple inode maps blocks and zone maps blocks
+	uint32_t const num_blocks = (bytes + m_config->ZoneSize() - 1) /
+								m_config->ZoneSize();
+	assert(m_super.AllocateInode() == 1);
+	Inode inode(m_cache, 1);
+	assert(m_super.AllocateZones(num_blocks) == 1);
+	uint32_t block = 1 * ((m_config->ZoneSize()) / (m_config->BlockSize())) + 1 + m_config->NumInodeEntryBlocks() + 1 + 1; //todo: support multiple inode maps blocks and zone maps blocks
 	std::cout << "root inode no: " << inode.InodeNo() << "\n";
 	std::cout << "root inode first block no: " << block << "\n";
+	std::cout << "root inode zone_size: " << m_config->ZoneSize() << "\n";
 	std::cout << "root inode block_size: " << m_config->BlockSize() << "\n";
 	inode.SetFirstBlock(block);
 	inode.ClearAllOtherZones();
-	inode.SetBlocksCount(blocks);
+	inode.SetBlocksCount(num_blocks);
 	inode.SetSize(2 * AUFS_DIR_SIZE);
 	inode.SetUid(getuid());
 	inode.SetGid(getgid());
@@ -284,66 +292,69 @@ Inode Formatter::MkRootDir()
 	return inode;
 }
 
-Inode Formatter::MkFile(uint32_t size)
-{
-	uint32_t const blocks = (size + m_config->BlockSize() - 1) /
-							m_config->BlockSize();
-	Inode inode(m_cache, m_super.AllocateInode());
-	uint32_t block = m_super.AllocateBlocks(blocks);
+// Do not Use
+// Inode Formatter::MkFile(uint32_t size)
+// {
+// 	uint32_t const blocks = (size + m_config->ZoneSize() - 1) /
+// 							m_config->ZoneSize();
+// 	Inode inode(m_cache, m_super.AllocateInode());
+// 	uint32_t block = m_super.AllocateZones(blocks);
 
-	inode.SetFirstBlock(block);
-	inode.ClearAllOtherZones();
-	inode.SetBlocksCount(blocks);//todo: check block count
-	inode.SetUid(getuid());
-	inode.SetGid(getgid());
-	inode.SetMode(493 | S_IFREG);
+// 	inode.SetFirstBlock(block);
+// 	inode.ClearAllOtherZones();
+// 	inode.SetBlocksCount(blocks);//todo: check block count
+// 	inode.SetUid(getuid());
+// 	inode.SetGid(getgid());
+// 	inode.SetMode(493 | S_IFREG);
 
-	return inode;
-}
+// 	return inode;
+// }
 
-uint32_t Formatter::Write(Inode &inode, uint8_t const *data, uint32_t size)
-{
-	if (!(inode.Mode() & S_IFREG))
-		throw std::logic_error("it is not file");
+// Do not Use
+// uint32_t Formatter::Write(Inode &inode, uint8_t const *data, uint32_t size)
+// {
+// 	if (!(inode.Mode() & S_IFREG))
+// 		throw std::logic_error("it is not file");
 
-	uint32_t const left = inode.BlocksCount() * m_config->BlockSize() -
-						  inode.Size();
-	if (left < size)
-		throw std::out_of_range("there is no enough space");
+// 	uint32_t const left = inode.BlocksCount() * m_config->ZoneSize() -
+// 						  inode.Size();
+// 	if (left < size)
+// 		throw std::out_of_range("there is no enough space");
 
-	uint32_t const block = inode.FirstBlock() + inode.Size() /
-													m_config->BlockSize();
-	uint32_t const offset = inode.Size() % m_config->BlockSize();
-	uint32_t const towrite = std::min(size, m_config->BlockSize() - offset);
+// 	uint32_t const block = inode.FirstBlock() + inode.Size() /
+// 													m_config->ZoneSize();
+// 	uint32_t const offset = inode.Size() % m_config->ZoneSize();
+// 	uint32_t const towrite = std::min(size, m_config->ZoneSize() - offset);
 
-	BlockPtr bp = m_cache.GetBlock(block);
-	std::copy_n(data, towrite, bp->Data() + offset);
-	inode.SetSize(inode.Size() + towrite);
+// 	BlockPtr bp = m_cache.GetBlock(block);
+// 	std::copy_n(data, towrite, bp->Data() + offset);
+// 	inode.SetSize(inode.Size() + towrite);
 
-	return towrite;
-}
+// 	return towrite;
+// }
 
-void Formatter::AddChild(Inode &inode, char const *name, Inode const &ch)
-{
-	if (!(inode.Mode() & S_IFDIR))
-		throw std::logic_error("it is not directory");
+// Do not use
+// void Formatter::AddChild(Inode &inode, char const *name, Inode const &ch)
+// {
+// 	if (!(inode.Mode() & S_IFDIR))
+// 		throw std::logic_error("it is not directory");
 
-	uint32_t const inblock = m_config->BlockSize() / AUFS_DIR_SIZE;
-	uint32_t const entries = inode.BlocksCount() * inblock;
-	uint32_t const left = entries - inode.Size();
+// 	uint32_t const inblock = m_config->ZoneSize() / AUFS_DIR_SIZE;
+// 	uint32_t const entries = inode.BlocksCount() * inblock;
+// 	uint32_t const left = entries - inode.Size();
 
-	if (!left)
-		throw std::out_of_range("there is no enough space");
+// 	if (!left)
+// 		throw std::out_of_range("there is no enough space");
 
-	uint32_t const block = inode.FirstBlock() + inode.Size() / inblock;
-	uint32_t const offset = inode.Size() % inblock;
+// 	uint32_t const block = inode.FirstBlock() + inode.Size() / inblock;
+// 	uint32_t const offset = inode.Size() % inblock;
 
-	BlockPtr bp = m_cache.GetBlock(block);
-	struct aufs_disk_dir_entry *dp = reinterpret_cast<struct aufs_disk_dir_entry *>(
-										 bp->Data()) +
-									 offset;
-	strncpy(dp->dde_name, name, AUFS_NAME_MAXLEN - 1);
-	dp->dde_name[AUFS_NAME_MAXLEN - 1] = '\0';
-	dp->dde_inode = htonl(ch.InodeNo());
-	inode.SetSize(inode.Size() + 1);
-}
+// 	BlockPtr bp = m_cache.GetBlock(block);
+// 	struct aufs_disk_dir_entry *dp = reinterpret_cast<struct aufs_disk_dir_entry *>(
+// 										 bp->Data()) +
+// 									 offset;
+// 	strncpy(dp->dde_name, name, AUFS_NAME_MAXLEN - 1);
+// 	dp->dde_name[AUFS_NAME_MAXLEN - 1] = '\0';
+// 	dp->dde_inode = htonl(ch.InodeNo());
+// 	inode.SetSize(inode.Size() + 1);
+// }
