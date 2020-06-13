@@ -12,7 +12,7 @@ static int add_nondir(struct dentry *dentry, struct inode *inode)
 	return err;
 }
 
-int minix_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode) //todo: assimilate
+int minix_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode) //todo: assimilate in terms of func name
 {
 	printk("minix_mkdir \n");
 	struct inode *inode;
@@ -84,8 +84,7 @@ int minix_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t rd
 	if (!old_valid_dev(rdev))
 		return -EINVAL;
 
-	//inode = minix_new_inode(dir, mode, &error);
-	inode = aufs_new_inode(dir, mode, &error); //vtodo: verify done: find empty inode
+	inode = aufs_new_inode(dir, mode, &error);
 	printk("minix_mknod inode %lu\n", inode->i_ino);
 	if (inode)
 	{
@@ -100,7 +99,6 @@ int minix_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t rd
 	return error;
 }
 
-//todo: add mkdir
 
 int minix_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 				 bool excl)

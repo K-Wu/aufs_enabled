@@ -37,15 +37,15 @@ static int aufs_get_block(struct inode *inode, sector_t iblock,
 	
 	
 	//todo: determine where the block size is used. some place need to be switch to zone size
-	if (!(AUFS_INODE(inode)->ai_zone_ptr[/*iblock*/block_idx]))//create)//done: check create semantics
+	if (!(AUFS_INODE(inode)->ai_zone_ptr[block_idx]))//create
 	{
 		printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
-		AUFS_INODE(inode)->ai_zone_ptr[/*iblock*/block_idx] = aufs_new_zone(inode);
+		AUFS_INODE(inode)->ai_zone_ptr[block_idx] = aufs_new_zone(inode);
 	}
-	map_bh(bh_result, inode->i_sb, /*0*/block_offset + AUFS_INODE(inode)->ai_zone_ptr[/*iblock*/block_idx]);
+	map_bh(bh_result, inode->i_sb, block_offset + AUFS_INODE(inode)->ai_zone_ptr[block_idx]);
 
 	#else
-	if (!(AUFS_INODE(inode)->ai_zone_ptr))//create)//done: check create semantics
+	if (!(AUFS_INODE(inode)->ai_zone_ptr))
 	{
 		printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
 		AUFS_INODE(inode)->ai_zone_ptr = aufs_new_zone(inode);
@@ -61,10 +61,10 @@ static void aufs_inode_fill(struct aufs_inode *ai,
 	#ifdef MULTI_BLOCK_PTR_SCHEME
 	int idx_loop_block_ptr;
 	for(idx_loop_block_ptr=0;idx_loop_block_ptr<ZONE_PTR_IN_INODE_NUM;idx_loop_block_ptr++){
-		ai->ai_zone_ptr[idx_loop_block_ptr]=be32_to_cpu(di->di_block_ptr[idx_loop_block_ptr]);
+		ai->ai_zone_ptr[idx_loop_block_ptr]=be32_to_cpu(di->di_zone_ptr[idx_loop_block_ptr]);
 	}
 	#else
-	ai->ai_zone_ptr = be32_to_cpu(di->di_block_ptr);
+	ai->ai_zone_ptr = be32_to_cpu(di->di_zone_ptr);
 	#endif
 	ai->ai_inode.i_mode = be32_to_cpu(di->di_mode);
 	ai->ai_inode.i_size = be32_to_cpu(di->di_size);
@@ -79,47 +79,37 @@ static void aufs_inode_fill(struct aufs_inode *ai,
 }
 
 /*
- * The minix V2 function to synchronize an inode.
+ * function to synchronize an inode.
  */
-static struct buffer_head *V2_minix_update_inode(struct inode *inode) //vtodo: verify done: assimilate this
+static struct buffer_head *V2_minix_update_inode(struct inode *inode)
 {
 	struct buffer_head *bh;
 	struct aufs_disk_inode *raw_inode;
 	struct aufs_inode *aufs_inode = AUFS_INODE(inode);
 	
 	int idx_loop_block_ptr;
-	//int i;
 
 	raw_inode = minix_V2_raw_inode(inode->i_sb, inode->i_ino, &bh);
 	if (!raw_inode)
 		return NULL;
-	raw_inode->di_mode = cpu_to_be32(inode->i_mode);//todo: remove htonl(inode->i_mode)
-	raw_inode->di_uid = cpu_to_be32(fs_high2lowuid(i_uid_read(inode)));//todo: remove htonl(fs_high2lowuid(i_uid_read(inode)))
-	raw_inode->di_gid = cpu_to_be32(fs_high2lowgid(i_gid_read(inode)));//todo: remove htonl(fs_high2lowgid(i_gid_read(inode)))
-	//raw_inode->i_nlinks = inode->i_nlink; //todo: add aufs_disk_inode field support
+	raw_inode->di_mode = cpu_to_be32(inode->i_mode);
+	raw_inode->di_uid = cpu_to_be32(fs_high2lowuid(i_uid_read(inode)));
+	raw_inode->di_gid = cpu_to_be32(fs_high2lowgid(i_gid_read(inode)));
 	raw_inode->di_size = cpu_to_be32(inode->i_size);
 	raw_inode->di_blocks =cpu_to_be32(inode->i_blocks);
-	//raw_inode->di_blocks = cpu_to_be32((raw_inode->di_size + inode->i_sb->s_blocksize - 1) / (inode->i_sb->s_blocksize));//todo: remove htonl((raw_inode->di_size + inode->i_sb->s_blocksize - 1) / (inode->i_sb->s_blocksize));
-	//raw_inode->i_mtime = inode->i_mtime.tv_sec; //todo: add aufs_disk_inode field support
-	//raw_inode->i_atime = inode->i_atime.tv_sec; //todo: add aufs_disk_inode field support
 	raw_inode->di_ctime = cpu_to_be64(inode->i_ctime.tv_sec);
 	#ifdef MULTI_BLOCK_PTR_SCHEME
 	for(idx_loop_block_ptr=0;idx_loop_block_ptr<ZONE_PTR_IN_INODE_NUM;idx_loop_block_ptr++){
-		raw_inode->di_block_ptr[idx_loop_block_ptr] = cpu_to_be32(aufs_inode->ai_zone_ptr[idx_loop_block_ptr]);
+		raw_inode->di_zone_ptr[idx_loop_block_ptr] = cpu_to_be32(aufs_inode->ai_zone_ptr[idx_loop_block_ptr]);
 	}
 	#else
-	raw_inode->di_block_ptr = cpu_to_be32(aufs_inode->ai_zone_ptr);
+	raw_inode->di_zone_ptr = cpu_to_be32(aufs_inode->ai_zone_ptr);
 	#endif
-	//todo: need to update the first block pointer
-	// if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
-	// 	raw_inode->i_zone[0] = old_encode_dev(inode->i_rdev);
-	// else for (i = 0; i < 10; i++)
-	// 	raw_inode->i_zone[i] = minix_inode->u.i2_data[i];
 	mark_buffer_dirty(bh);
 	return bh;
 }
 
-int minix_write_inode(struct inode *inode, struct writeback_control *wbc) //vtodo: verify done: assimilate this
+int minix_write_inode(struct inode *inode, struct writeback_control *wbc)
 {
 	int err = 0;
 	struct buffer_head *bh;
@@ -220,7 +210,7 @@ printk("aufs_inode_get %lu info:\n"
 			 (int)S_ISDIR(inode->i_mode));
 	inode->i_mapping->a_ops = &aufs_aops;
 	if (S_ISREG(inode->i_mode))
-	{ //vtodo: verifydone: mimic minix_set_inode
+	{ 
 		inode->i_op = &minix_file_inode_operations;
 		inode->i_fop = &aufs_file_ops;
 		inode->i_mapping->a_ops = &aufs_aops;
@@ -271,13 +261,9 @@ int minix_set_inode(struct inode *inode, dev_t rdev)
 	else if (S_ISLNK(inode->i_mode))
 	{
 		return -EINVAL;
-		//inode->i_op = &minix_symlink_inode_operations;
-		//inode_nohighmem(inode);
-		//inode->i_mapping->a_ops = &aufs_aops;
 	}
-	else
+	else //todo: init_special_inode(inode, inode->i_mode, rdev);
 		return -EINVAL;
-	//init_special_inode(inode, inode->i_mode, rdev);
 	return 0;
 }
 
@@ -288,7 +274,7 @@ static int aufs_readpage(struct file *file, struct page *page)
 	return block_read_full_page(page, aufs_get_block);
 }
 
-static int aufs_writepage(/*struct file *file, */ struct page *page, struct writeback_control *wbc)
+static int aufs_writepage(struct page *page, struct writeback_control *wbc)
 {
 	printk("aufs_writepage\n");
 	return block_write_full_page(page, aufs_get_block, wbc);
@@ -320,20 +306,6 @@ static int minix_write_begin(struct file *file, struct address_space *mapping,
 	return ret;
 }
 
-// static int aufs_readpages(struct file *file, struct address_space *mapping,
-// 			struct list_head *pages, unsigned nr_pages)
-// {
-// 	return mpage_readpages(mapping, pages, nr_pages, aufs_get_block);
-// }
-
-// static ssize_t aufs_direct_io(/*int rw,*/ struct kiocb *iocb,
-// 			struct iov_iter *iter, loff_t off)
-// {
-// 	struct inode *inode = file_inode(iocb->ki_filp);
-
-// 	return blockdev_direct_IO(rw, iocb, inode, iter, off, aufs_get_block);
-// }
-
 int minix_getattr(const struct path *path, struct kstat *stat,
 				  u32 request_mask, unsigned int flags)
 {
@@ -352,6 +324,4 @@ const struct address_space_operations aufs_aops = {
 	.writepage = aufs_writepage,
 	.write_begin = minix_write_begin,
 	.write_end = generic_write_end
-	//.readpages = aufs_readpages,
-	//.direct_IO = aufs_direct_io
 };

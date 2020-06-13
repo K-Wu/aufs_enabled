@@ -56,12 +56,12 @@ static int aufs_dir_emit(struct dir_context *ctx,
 	return dir_emit(ctx, de->dde_name, len, ino, type);
 }
 
-static inline void *minix_next_entry(void *de) //todo: assimilate
+static inline void *minix_next_entry(void *de) //todo: assimilate in terms of func name
 {
 	return (void *)((char *)de + AUFS_DIR_SIZE);
 }
 
-static int dir_commit_chunk(struct page *page, loff_t pos, unsigned len) //todo: assimilate
+static int dir_commit_chunk(struct page *page, loff_t pos, unsigned len) //todo: assimilate in terms of func name
 {
 	struct address_space *mapping = page->mapping;
 	struct inode *dir = mapping->host;
@@ -85,7 +85,7 @@ static int dir_commit_chunk(struct page *page, loff_t pos, unsigned len) //todo:
  * byte in that page, plus one.
  */
 static unsigned
-minix_last_byte(struct inode *inode, unsigned long page_nr) //todo: assimilate
+minix_last_byte(struct inode *inode, unsigned long page_nr) //todo: assimilate in terms of func name
 {
 	unsigned last_byte = PAGE_SIZE;
 
@@ -102,7 +102,7 @@ static inline int namecompare(int len, int maxlen,
 	return !memcmp(name, buffer, len);
 }
 
-static struct page *dir_get_page(struct inode *dir, unsigned long n) //todo: assimilate
+static struct page *dir_get_page(struct inode *dir, unsigned long n) //todo: assimilate in terms of func name
 {
 	struct address_space *mapping = dir->i_mapping;
 	struct page *page = read_mapping_page(mapping, n, NULL);
@@ -165,13 +165,11 @@ found:
 	return (struct aufs_disk_dir_entry *)p;
 }
 
-int minix_add_link(struct dentry *dentry, struct inode *inode) //todo: assimilate
+int minix_add_link(struct dentry *dentry, struct inode *inode) //todo: assimilate in terms of func name
 {
 	struct inode *dir = d_inode(dentry->d_parent);
 	const char *name = dentry->d_name.name;
 	int namelen = dentry->d_name.len;
-	//struct super_block * sb = dir->i_sb;
-	//struct aufs_super_block * sbi = AUFS_SB(sb);
 	struct page *page = NULL;
 	unsigned long npages = dir_pages(dir);
 	unsigned long n;
@@ -202,20 +200,12 @@ int minix_add_link(struct dentry *dentry, struct inode *inode) //todo: assimilat
 		for (p = kaddr; p <= limit; p = minix_next_entry(p))
 		{
 			de = (struct aufs_disk_dir_entry *)p;
-			//if (sbi->s_version == MINIX_V3) {
 			namx = de->dde_name;
 			inumber = de->dde_inode;
-			// } else {
-			// 	namx = de->name;
-			// 	inumber = de->inode;
-			// }
 			if (p == dir_end)
 			{
 				/* We hit i_size */
-				//if (sbi->s_version == MINIX_V3)
 				de->dde_inode = 0;
-				// else
-				// 	de->inode = 0;
 				goto got_it;
 			}
 			if (!inumber)
@@ -236,13 +226,8 @@ got_it:
 	if (err)
 		goto out_unlock;
 	memcpy(namx, name, namelen);
-	//if (sbi->s_version == MINIX_V3) {
 	memset(namx + namelen, 0, AUFS_DIR_SIZE - namelen - 4);
 	de->dde_inode = inode->i_ino;
-	// } else {
-	// 	memset (namx + namelen, 0, AUFS_DIR_SIZE - namelen - 2);
-	// 	de->inode = inode->i_ino;
-	// }
 	err = dir_commit_chunk(page, pos, AUFS_DIR_SIZE);
 	dir->i_mtime = dir->i_ctime = current_time(dir);
 	mark_inode_dirty(dir);
@@ -255,10 +240,9 @@ out_unlock:
 	goto out_put;
 }
 
-int minix_make_empty(struct inode *inode, struct inode *dir) //todo: assimilate
+int minix_make_empty(struct inode *inode, struct inode *dir) //todo: assimilate in terms of func name
 {
 	struct page *page = grab_cache_page(inode->i_mapping, 0);
-	//struct aufs_super_block *sbi = AUFS_SB(inode->i_sb);
 	char *kaddr;
 	int err;
 	struct aufs_disk_dir_entry *de3;
@@ -331,8 +315,6 @@ static int minix_readdir(struct file *file, struct dir_context *ctx)
 {
 	struct inode *inode = file_inode(file);
 	struct super_block *sb = inode->i_sb;
-	//struct minix_sb_info *sbi = minix_sb(sb);
-	//unsigned chunk_size = sbi->s_dirsize;
 	unsigned long npages = dir_pages(inode);
 	unsigned long pos = ctx->pos;
 	unsigned offset;
@@ -390,7 +372,6 @@ const struct file_operations aufs_dir_ops = {
 	.read = generic_read_dir,
 	.iterate_shared = minix_readdir,
 	.fsync = generic_file_fsync,
-	//.iterate = aufs_readdir,
 };
 
 struct aufs_filename_match
@@ -448,7 +429,7 @@ static ino_t aufs_inode_by_name(struct inode *dir, struct qstr *child)
 }
 
 static struct dentry *aufs_lookup(struct inode *dir, struct dentry *dentry,
-								  unsigned flags) //todo: assimilate minix_lookup
+								  unsigned flags) //todo: assimilate in terms of func name minix_lookup
 {
 	struct inode *inode = NULL;
 	ino_t ino;
@@ -471,18 +452,12 @@ static struct dentry *aufs_lookup(struct inode *dir, struct dentry *dentry,
 }
 
 const struct inode_operations aufs_dir_inode_ops = {
-	.lookup = minix_lookup, //aufs_lookup,
+	.lookup = minix_lookup,
 	.create = minix_create,
 	.mknod = minix_mknod,
 	.getattr = minix_getattr,
 	.mkdir = minix_mkdir,
 	.tmpfile = minix_tmpfile,
 };
-//tutorial: clear inode: see minix_clear_inode. Manipulate the region pointed by buffer_head->b_data and mark that buffer_head as dirty. One may use ordinary pointer dereference to modify.
 
-// const struct file_operations minix_dir_operations = {
-// 	.llseek		= generic_file_llseek,
-// 	.read		= generic_read_dir,
-// 	.iterate_shared	= minix_readdir,
-// 	.fsync		= generic_file_fsync,
-// };
+//tutorial: clear inode: see minix_clear_inode. Manipulate the region pointed by buffer_head->b_data and mark that buffer_head as dirty. One may use ordinary pointer dereference to modify.
