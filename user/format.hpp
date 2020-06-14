@@ -52,12 +52,13 @@ public:
 
 private:
 	void FillSuper(BlocksCache &cache) noexcept;
-	void FillBlockMap(BlocksCache &cache) noexcept;
+	void FillZoneMap(BlocksCache &cache) noexcept;
 	void FillInodeMap(BlocksCache &Cache) noexcept;
 
 	BlockPtr m_super_block;
 	BlockPtr m_zone_map;
 	BlockPtr m_inode_map;
+	BlocksCache &m_cache;
 };
 
 class Formatter

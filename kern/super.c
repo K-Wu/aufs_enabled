@@ -24,7 +24,7 @@ static void aufs_put_super(struct super_block *sb)
 
 static struct super_operations const aufs_super_ops = {
 	.alloc_inode = aufs_inode_alloc,
-	//.free_inode = aufs_inode_free,
+	//todo: check if need .free_inode = aufs_inode_free,
 	.write_inode = minix_write_inode,
 	.destroy_inode = aufs_inode_free,
 	.put_super = aufs_put_super,
@@ -40,8 +40,8 @@ static inline void aufs_super_block_fill(struct aufs_super_block *asb,
 	asb->asb_root_inode = be32_to_cpu(dsb->dsb_root_inode);
 	asb->asb_inode_map_blocks = be32_to_cpu(dsb->dsb_inode_map_blocks);
 	asb->asb_zone_map_blocks = be32_to_cpu(dsb->dsb_zone_map_blocks);
+	asb->asb_alignment_num_blocks = be32_to_cpu(dsb->dsb_alignment_num_blocks);
 	
-	//asb->asb_blocks_per_zone = be32_to_cpu(dsb->dsb_blocks_per_zone);
 	asb->asb_blocks_per_zone = (asb->asb_zone_size>4096)?(asb->asb_zone_size/4096):1;
 	asb->asb_inodes_in_block = 
 		block_size / sizeof(struct aufs_disk_inode);
@@ -88,7 +88,7 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 
 	for (i = 0; i < asb->asb_zone_map_blocks; i++)
 	{
-		if (!(asb->s_zmap[i] = sb_bread(sb, block))) //vtodo: verify done: sb_brels when put_super and deal with
+		if (!(asb->s_zmap[i] = sb_bread(sb, block)))
 			goto out_no_bitmap;
 		block++;
 	}
@@ -117,7 +117,8 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 			 "\tinodes in block = %lu\n"
 			 "\tblocks per zone = %lu\n"
 			 "\tinode map blocks = %lu\n"
-			 "\tzone map blocks = %lu\n",
+			 "\tzone map blocks = %lu\n"
+			 "\talignment num blocks = %lu\n",
 			 (unsigned long)asb->asb_magic,
 			 (unsigned long)asb->asb_inode_blocks,
 			 (unsigned long)asb->asb_zone_size,
@@ -125,7 +126,8 @@ static struct aufs_super_block *aufs_super_block_read(struct super_block *sb)
 			 (unsigned long)asb->asb_inodes_in_block,
 			 (unsigned long)asb->asb_blocks_per_zone,
 			 (unsigned long)asb->asb_inode_map_blocks,
-			 (unsigned long)asb->asb_zone_map_blocks);
+			 (unsigned long)asb->asb_zone_map_blocks,
+			 (unsigned long)asb->asb_alignment_num_blocks);
 
 	return asb;
 
@@ -141,7 +143,6 @@ out_freemap:
 
 out_no_map:
 	//ret = -ENOMEM; //todo: support return val
-	//if (!silent)
 	printk("MINIX-fs: can't allocate map\n");
 	goto out_release;
 out_release:
@@ -149,7 +150,6 @@ out_release:
 	goto out;
 
 out:
-	//s->s_fs_info = NULL;
 	kfree(asb);
 	return NULL;
 }
@@ -172,10 +172,6 @@ static int aufs_fill_sb(struct super_block *sb, void *data, int silent)
 		return -EINVAL;
 		}
 	sb->s_op = &aufs_super_ops;
-
-	//sb->s_time_min = 0;
-	//sb->s_time_max = U32_MAX;
-
 
 	root = aufs_inode_get(sb, asb->asb_root_inode);
 	if (IS_ERR(root))
@@ -211,10 +207,10 @@ static struct file_system_type aufs_type = {
 	.fs_flags = FS_REQUIRES_DEV};
 
 static struct kmem_cache *aufs_inode_cache;
-static void minix_free_in_core_inode(struct inode *inode)
-{
-	kmem_cache_free(aufs_inode_cache, AUFS_INODE(inode));
-}
+// static void minix_free_in_core_inode(struct inode *inode)
+// {
+// 	kmem_cache_free(aufs_inode_cache, AUFS_INODE(inode));
+// }
 struct inode *aufs_inode_alloc(struct super_block *sb)
 {
 	struct aufs_inode *inode = (struct aufs_inode *)

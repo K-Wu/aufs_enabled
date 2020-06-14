@@ -4,7 +4,6 @@
 #include <cassert>
 #include <cstring>
 #include <cstdint>
-//#include "../kern/aufs.h"
 #define ZONE_PTR_IN_INODE_NUM 9
 static uint32_t const AUFS_MAGIC = 0x13131313;
 static uint32_t const AUFS_NAME_MAXLEN = 60;
@@ -17,7 +16,7 @@ struct aufs_super_block
 	uint32_t asb_inode_blocks;
 	uint32_t asb_inode_map_blocks;
 	uint32_t asb_zone_map_blocks;
-	//uint32_t asb_blocks_per_zone;
+	uint32_t asb_alignment_num_blocks;
 };
 
 static inline uint32_t &ASB_MAGIC(struct aufs_super_block *asb)
@@ -50,10 +49,10 @@ static inline uint32_t &ASB_BLOCK_MAP_BLOCKS(struct aufs_super_block *asb)
 	return asb->asb_zone_map_blocks;
 }
 
-// static inline uint32_t &ASB_BLOCK_PER_ZONE(struct aufs_super_block *asb)
-// {
-// 	return asb->asb_blocks_per_zone;
-// }
+static inline uint32_t &ASB_ALIGNMENT_NUM_BLOCKS(struct aufs_super_block *asb)
+{
+	return asb->asb_alignment_num_blocks;
+}
 
 struct aufs_inode
 {
@@ -107,17 +106,12 @@ static inline uint64_t &AI_CTIME(struct aufs_inode *ai)
 	return ai->ai_ctime;
 }
 
-// struct aufs_dir_entry {
-// 	char 		ade_name[AUFS_NAME_MAXLEN];
-// 	uint32_t	ade_inode;
-// };
-
 static const unsigned long AUFS_DIR_SIZE = 64;
 
 struct aufs_disk_dir_entry
 {
 	uint32_t dde_inode;
-	char dde_name[AUFS_DIR_SIZE - sizeof(uint32_t)]; //AUFS_DDE_MAX_NAME_LEN];
+	char dde_name[AUFS_DIR_SIZE - sizeof(uint32_t)];
 };
 
 static inline uint32_t &ADE_INODE(struct aufs_disk_dir_entry *ade)

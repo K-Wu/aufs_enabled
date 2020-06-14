@@ -11,7 +11,6 @@
 #define ZONE_PTR_IN_INODE_NUM 1
 #endif
 #define AUFS_DDE_SIZE 32
-//#define AUFS_DDE_MAX_NAME_LEN (AUFS_DDE_SIZE - sizeof(__be32))
 
 static const unsigned long AUFS_MAGIC = 0x13131313;
 static const unsigned long AUFS_DIR_SIZE = 64;
@@ -26,15 +25,15 @@ struct aufs_disk_super_block
 	__be32 dsb_inode_blocks;
 	__be32 dsb_inode_map_blocks;
 	__be32 dsb_zone_map_blocks;
-	//__be32 dsb_blocks_per_zone; //calculate zone_size/block_size other than load it
+	__be32 dsb_alignment_num_blocks;
 };
 
 struct aufs_disk_inode
 {
 #ifdef MULTI_BLOCK_PTR_SCHEME
-	__be32 di_block_ptr[ZONE_PTR_IN_INODE_NUM];
+	__be32 di_zone_ptr[ZONE_PTR_IN_INODE_NUM];
 #else
-	__be32 di_block_ptr;
+	__be32 di_zone_ptr;
 #endif
 	__be32 di_blocks; //inode->i_blocks does not use the same block granularity 4KiB as in block map or pagecache. it is 512B hard coded in the kernel.
 	__be32 di_size;
@@ -60,8 +59,9 @@ struct aufs_super_block
 	unsigned long asb_inode_map_blocks;
 	unsigned long asb_zone_map_blocks;
 	unsigned long asb_blocks_per_zone; //todo: assert unsigned long is 32 bit
+	unsigned long asb_alignment_num_blocks;
 	struct buffer_head **s_zmap;
-	struct buffer_head **s_imap; //vtodo: verify done: read bitmap to initialize s_imap
+	struct buffer_head **s_imap;
 	struct buffer_head *s_sbh;
 };
 
@@ -89,7 +89,7 @@ static inline struct aufs_inode *AUFS_INODE(struct inode *inode)
 static inline sector_t aufs_inode_block(struct aufs_super_block const *asb,
 										ino_t inode_no)
 {
-	return (sector_t)(1 + asb->asb_inode_map_blocks + asb->asb_zone_map_blocks + inode_no / asb->asb_inodes_in_block); //todo: add bitmap to disk
+	return (sector_t)(1 + asb->asb_inode_map_blocks + asb->asb_zone_map_blocks + inode_no / asb->asb_inodes_in_block); 
 }
 
 static inline size_t aufs_inode_offset(struct aufs_super_block const *asb,

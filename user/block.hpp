@@ -17,10 +17,18 @@ class Configuration
 public:
 	explicit Configuration(std::string device,
 						   std::string dir,
-						   uint32_t blocks,
-						   uint32_t block_size) noexcept
-		: m_device(device), m_dir(dir), m_device_zones(blocks), m_zone_size(block_size), m_inode_blocks(CountInodeEntryBlocks())
+						   uint32_t n_zones,
+						   uint32_t zone_size,
+						   uint32_t num_block_inode_map,
+						   uint32_t num_block_zone_map,
+						   uint32_t num_block_alignment) noexcept
+		: m_device(device), m_dir(dir), m_zone_size(zone_size), m_inode_map_blocks(num_block_inode_map),m_zone_map_blocks(num_block_zone_map), m_num_block_alignment(num_block_alignment)
 	{
+		//body is executed after initializer list.
+		//A copy of stnadard can be found at https://stackoverflow.com/questions/4037219/order-of-execution-in-constructor-initialization-list.
+		std::cout << "num_block_zone_map*block_size*8("<<num_block_zone_map*BlockSize()*8<<") n_zones("<<n_zones<<")"<<std::endl;
+		m_device_zones = std::min(num_block_zone_map*BlockSize()*8,n_zones);
+		m_inode_blocks=CountInodeEntryBlocks();
 	}
 
 	std::string const &Device() const noexcept
@@ -33,7 +41,7 @@ public:
 		return m_dir;
 	}
 
-	uint32_t Zones() const noexcept
+	uint32_t NumZones() const noexcept
 	{
 		return m_device_zones;
 	}
@@ -54,11 +62,37 @@ public:
 		return (m_zone_size > 4096) ? 4096 : m_zone_size;
 	}
 
+	uint32_t NumInodeMapBlocks() const noexcept
+	{
+		return m_inode_map_blocks;
+	}
+	
+	uint32_t NumZoneMapBlocks() const noexcept
+	{
+		return m_zone_map_blocks;
+	}
+
+	uint32_t CalculateAlignedNumBlocks(uint32_t num_blocks) const noexcept
+	{
+
+		return (integer_round_up_division(num_blocks,m_num_block_alignment)*m_num_block_alignment);
+	}
+
+	uint32_t NumBlockAlignment() const noexcept
+	{
+		return m_num_block_alignment;
+	}
+
 private:
+	uint32_t integer_round_up_division(uint32_t dividend, uint32_t divisor) const noexcept
+	{
+		return (dividend+divisor-1)/divisor;
+	}
+
 	uint32_t CountInodeEntryBlocks() const noexcept
 	{
-		std::cout << "Zones() " << Zones() << "\n";
-		uint32_t const inodes = std::min(Zones(), BlockSize() * 8);
+		std::cout << "NumZones() " << NumZones() << "\n";
+		uint32_t const inodes = std::min(NumZones(), NumInodeMapBlocks() * BlockSize() * 8);
 		std::cout << "BLOCK SIZE " << BlockSize() << " , ZoneSize(): " << ZoneSize() << " in CountInodeBLocks: \n";
 		uint32_t const in_block = BlockSize() /
 								  sizeof(struct aufs_inode);
@@ -71,6 +105,9 @@ private:
 	uint32_t m_device_zones;
 	uint32_t m_zone_size;
 	uint32_t m_inode_blocks;
+	uint32_t m_inode_map_blocks;
+	uint32_t m_zone_map_blocks;
+	uint32_t m_num_block_alignment;
 };
 
 using ConfigurationPtr = std::shared_ptr<Configuration>;

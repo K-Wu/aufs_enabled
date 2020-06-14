@@ -22,7 +22,7 @@ size_t DeviceSize(std::string const &device)
 
 bool VerifyZones(ConfigurationConstPtr config)
 {
-	if (config->Zones() <= 3)
+	if (config->NumZones() <= 3)
 		return false;
 
 	return true;
@@ -32,23 +32,31 @@ bool VerifyDevice(ConfigurationConstPtr config)
 {
 	size_t const size = DeviceSize(config->Device());
 
-	if (size < config->Zones() * config->ZoneSize())
+	if (size < config->NumZones() * config->ZoneSize())
 		return false;
 
 	return true;
 }
 
+bool IsPowerOfTwo(uint32_t ZoneSize){
+	while (ZoneSize>1){
+		if (ZoneSize%2==1)
+			return false;
+		ZoneSize/=2;
+	}
+	return true;
+}
+
 bool VerifyZoneSize(ConfigurationConstPtr config)
 {
-	if (config->ZoneSize() != 512u && config->ZoneSize() != 1024u &&
-		config->ZoneSize() != 2048u && config->ZoneSize() != 4096u && config->ZoneSize() != 16384u)
+	if (config->ZoneSize() < 512u || !IsPowerOfTwo(config->ZoneSize()))
 		return false;
 
-	if (config->BlockSize() * 8 < config->Zones())
-		std::cout << "WARNING: With zone size = "
+	if (config->BlockSize() * 8 < config->NumZones())
+		std::cout << "Experimental: With zone size = "
 				  << config->ZoneSize() << " zones number should be "
 				  << "less or equal to " << config->BlockSize() * 8
-				  << std::endl;
+				  << ". Some behaviors of this mkfs or kernel FS may be weird or incorrect."<< std::endl;
 
 	return true;
 }
@@ -70,12 +78,12 @@ ConfigurationConstPtr VerifyConfiguration(ConfigurationConstPtr config)
 void PrintHelp()
 {
 	std::cout << "Usage:" << std::endl
-			  << "\tmkfs.aufs [(--zone_size | -s) SIZE] [(--blocks | -b) BLOCKS] DEVICE"
+			  << "\tmkfs.aufs [(--zonesize | -s) SIZE] [(--nzones | -b) NUMZONES] DEVICE"
 			  << std::endl
 			  << std::endl
 			  << "Where:" << std::endl
-			  << "\tSIZE    - block size. Default is 4096 bytes." << std::endl
-			  << "\tBLOCKS  - number of blocks would be used for aufs. By default is DEVICE size / SIZE." << std::endl
+			  << "\tSIZE    - zone size. Default is 4096 bytes." << std::endl
+			  << "\tBLOCKS  - number of zones would be used for aufs. By default is DEVICE size / SIZE." << std::endl
 			  << "\tDEVICE  - device file." << std::endl;
 }
 
@@ -83,18 +91,18 @@ ConfigurationConstPtr ParseArgs(int argc, char **argv)
 {
 	std::string device, dir;
 	size_t zone_size = 16384u;
-	size_t block_size = 4096u;
-	size_t blocks = 0;
+	//size_t block_size;
+	size_t num_zones = 0;
 
 	while (argc--)
 	{
 		std::string const arg(*argv++);
-		if ((arg == "--blocks" || arg == "-b") && argc)
+		if ((arg == "--nzones" || arg == "-b") && argc)
 		{
-			blocks = std::stoi(*argv++);
+			num_zones = std::stoi(*argv++);
 			--argc;
 		}
-		else if ((arg == "--zone_size" || arg == "-s") && argc)
+		else if ((arg == "--zonesize" || arg == "-s") && argc)
 		{
 			zone_size = std::stoi(*argv++);
 			--argc;
@@ -114,14 +122,16 @@ ConfigurationConstPtr ParseArgs(int argc, char **argv)
 		}
 	}
 
+	//block_size=(zone_size>(4096u))?(4096u):(zone_size);//unit: byte
+
 	if (device.empty())
 		throw std::runtime_error("Device name expected");
 
-	if (blocks == 0)
-		blocks = std::min(DeviceSize(device) / zone_size, block_size * 8);
+	if (num_zones == 0)
+		num_zones = DeviceSize(device) / zone_size;
 
 	ConfigurationConstPtr config = std::make_shared<Configuration>(
-		device, dir, blocks, zone_size);
+		device, dir, num_zones, zone_size, 1, 1, 1024);
 
 	return VerifyConfiguration(config);
 }
@@ -134,10 +144,6 @@ int main(int argc, char **argv)
 		ConfigurationConstPtr config = ParseArgs(argc - 1, argv + 1);
 		Formatter format(config);
 
-		//if (!config->SourceDir().empty())
-		//		format.SetRootInode(CopyDir(format,
-		//				config->SourceDir()));
-		//else
 		format.SetRootInode(format.MkRootDir());
 
 		return 0;
