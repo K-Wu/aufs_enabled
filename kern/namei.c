@@ -14,10 +14,9 @@ static int add_nondir(struct dentry *dentry, struct inode *inode)
 
 int minix_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode) //todo: assimilate in terms of func name
 {
-	printk("minix_mkdir \n");
 	struct inode *inode;
 	int err;
-
+	printk("minix_mkdir \n");
 	inode_inc_link_count(dir);
 
 	inode = aufs_new_inode(dir, S_IFDIR | mode, &err);

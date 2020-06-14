@@ -16,6 +16,7 @@ struct aufs_super_block
 	uint32_t asb_inode_blocks;
 	uint32_t asb_inode_map_blocks;
 	uint32_t asb_zone_map_blocks;
+	uint32_t asb_alignment_num_blocks;
 };
 
 static inline uint32_t &ASB_MAGIC(struct aufs_super_block *asb)
@@ -46,6 +47,11 @@ static inline uint32_t &ASB_INODE_MAP_BLOCKS(struct aufs_super_block *asb)
 static inline uint32_t &ASB_BLOCK_MAP_BLOCKS(struct aufs_super_block *asb)
 {
 	return asb->asb_zone_map_blocks;
+}
+
+static inline uint32_t &ASB_ALIGNMENT_NUM_BLOCKS(struct aufs_super_block *asb)
+{
+	return asb->asb_alignment_num_blocks;
 }
 
 struct aufs_inode

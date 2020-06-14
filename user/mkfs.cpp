@@ -53,10 +53,10 @@ bool VerifyZoneSize(ConfigurationConstPtr config)
 		return false;
 
 	if (config->BlockSize() * 8 < config->NumZones())
-		std::cout << "WARNING: With zone size = "
+		std::cout << "Experimental: With zone size = "
 				  << config->ZoneSize() << " zones number should be "
 				  << "less or equal to " << config->BlockSize() * 8
-				  << std::endl;
+				  << ". Some behaviors of this mkfs or kernel FS may be weird or incorrect."<< std::endl;
 
 	return true;
 }
@@ -91,7 +91,7 @@ ConfigurationConstPtr ParseArgs(int argc, char **argv)
 {
 	std::string device, dir;
 	size_t zone_size = 16384u;
-	size_t block_size;
+	//size_t block_size;
 	size_t num_zones = 0;
 
 	while (argc--)
@@ -122,16 +122,16 @@ ConfigurationConstPtr ParseArgs(int argc, char **argv)
 		}
 	}
 
-	block_size=(zone_size>(4096u))?(4096u):(zone_size);
+	//block_size=(zone_size>(4096u))?(4096u):(zone_size);//unit: byte
 
 	if (device.empty())
 		throw std::runtime_error("Device name expected");
 
 	if (num_zones == 0)
-		num_zones = std::min(DeviceSize(device) / zone_size, block_size * 8);
+		num_zones = DeviceSize(device) / zone_size;
 
 	ConfigurationConstPtr config = std::make_shared<Configuration>(
-		device, dir, num_zones, zone_size);
+		device, dir, num_zones, zone_size, 1, 1, 1024);
 
 	return VerifyConfiguration(config);
 }

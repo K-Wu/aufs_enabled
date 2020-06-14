@@ -104,7 +104,7 @@ void Inode::FillInode(BlocksCache &cache)
 {
 	ConfigurationConstPtr const config = cache.Config();
 	size_t const in_block = config->BlockSize() / sizeof(struct aufs_inode);
-	size_t const block = InodeNo() / in_block + 3; //todo: modify according to 1+zoneMap+blockMap+inodeMap
+	size_t const block = InodeNo() / in_block + 1 + config->NumInodeMapBlocks() + config->NumZoneMapBlocks(); //todo: modify according to 1+zoneMap+inodeMap
 	size_t const index = InodeNo() % in_block;
 	size_t const offset = index * sizeof(struct aufs_inode);
 	std::cout << "fill inode block: " << block << " index: " << index << "oofset: " << offset << "\n";
@@ -114,16 +114,16 @@ void Inode::FillInode(BlocksCache &cache)
 }
 
 SuperBlock::SuperBlock(BlocksCache &cache)
-	: m_super_block(cache.GetBlock(0)), m_zone_map(cache.GetBlock(1)), m_inode_map(cache.GetBlock(2))
+	: m_super_block(cache.GetBlock(0)), m_zone_map(cache.GetBlock(1)), m_inode_map(cache.GetBlock(1+cache.Config()->NumZoneMapBlocks())), m_cache(cache)
 {
-	FillBlockMap(cache);
+	FillZoneMap(cache);
 	FillInodeMap(cache);
 	FillSuper(cache);
 }
 
 uint32_t SuperBlock::AllocateInode() noexcept
 {
-	BitIterator const e(m_inode_map->Data() + m_inode_map->Size() * 8, 0);
+	BitIterator const e(m_inode_map->Data() + m_cache.Config()->NumInodeMapBlocks()*m_inode_map->Size() * 8, 0);
 	BitIterator const b(m_inode_map->Data(), 0);
 
 	BitIterator it = std::find(b, e, false);
@@ -141,7 +141,7 @@ uint32_t SuperBlock::AllocateInode() noexcept
 
 uint32_t SuperBlock::AllocateZones(size_t zones) noexcept
 {
-	BitIterator const e(m_zone_map->Data() + m_zone_map->Size() * 8, 0);
+	BitIterator const e(m_zone_map->Data() + m_cache.Config()->NumZoneMapBlocks()*m_zone_map->Size() * 8, 0);
 	BitIterator const b(m_zone_map->Data(), 0);
 
 	BitIterator it = std::find(b, e, false);
@@ -182,19 +182,20 @@ void SuperBlock::FillSuper(BlocksCache &cache) noexcept
 	ASB_ZONE_SIZE(sb) = htonl(cache.Config()->ZoneSize());
 	ASB_ROOT_INODE(sb) = htonl(-1);
 	ASB_INODE_BLOCKS(sb) = htonl(cache.Config()->NumInodeEntryBlocks());
-	ASB_INODE_MAP_BLOCKS(sb) = htonl(1); //todo: support multiple-block inode maps
-	ASB_BLOCK_MAP_BLOCKS(sb) = htonl(1); //todo: support multiple-block zone maps
+	ASB_INODE_MAP_BLOCKS(sb) = htonl(cache.Config()->NumInodeMapBlocks()); //todo: support multiple-block inode maps
+	ASB_BLOCK_MAP_BLOCKS(sb) = htonl(cache.Config()->NumInodeMapBlocks()); //todo: support multiple-block zone maps
+	ASB_ALIGNMENT_NUM_BLOCKS(sb) =htonl(cache.Config()->NumBlockAlignment());
 }
 
-void SuperBlock::FillBlockMap(BlocksCache &cache) noexcept
+void SuperBlock::FillZoneMap(BlocksCache &cache) noexcept
 {
 	size_t const blocks = std::min(cache.Config()->NumZones(),
-								   cache.Config()->BlockSize() * 8);//todo: support multiple-block zone maps
+								   cache.Config()->NumZoneMapBlocks()*cache.Config()->BlockSize() * 8);//todo: support multiple-block zone maps
 
 	BitIterator const it(m_zone_map->Data(), 0);
 	std::fill(it, it + 1, true);		   //std::fill(it, it + 3 + inode_blocks + 2, true);			  //todo: support multiple-block zone maps
 	std::fill(it + 1, it + blocks, false); //std::fill(it + 3 + inode_blocks + 2, it + blocks, false); //2: 1 fore root inode and 1 for badblock
-	std::fill(it + blocks, it + cache.Config()->BlockSize() * 8, true);
+	std::fill(it + blocks, it + cache.Config()->NumZoneMapBlocks()*cache.Config()->BlockSize() * 8, true);
 }
 
 void SuperBlock::FillInodeMap(BlocksCache &cache) noexcept
@@ -203,12 +204,12 @@ void SuperBlock::FillInodeMap(BlocksCache &cache) noexcept
 		cache.Config()->BlockSize() / sizeof(struct aufs_inode);
 	uint32_t const inode_blocks = cache.Config()->NumInodeEntryBlocks();
 	uint32_t const num_inodes = std::min(inode_blocks * in_block,
-										 cache.Config()->BlockSize() * 8); //todo: support multiple-block zone maps
+										 cache.Config()->NumInodeMapBlocks()*cache.Config()->BlockSize() * 8); //todo: support multiple-block zone maps
 
 	BitIterator const it(m_inode_map->Data(), 0);
 	std::fill(it, it + 1, true);
 	std::fill(it + 1, it + num_inodes, false);
-	std::fill(it + num_inodes, it + cache.Config()->BlockSize() * 8, true);
+	std::fill(it + num_inodes, it + cache.Config()->NumInodeMapBlocks()*cache.Config()->BlockSize() * 8, true);
 }
 
 void Formatter::SetRootInode(Inode const &inode) noexcept
@@ -224,7 +225,7 @@ Inode Formatter::MkRootDir()
 	assert(m_super.AllocateInode() == 1);
 	Inode inode(m_cache, 1);
 	assert(m_super.AllocateZones(num_blocks) == 1);
-	uint32_t block = /*offset because root dir inode is 1*/1 * ((m_config->ZoneSize()) / (m_config->BlockSize())) + /*inode map*/1 + /*inode entries*/m_config->NumInodeEntryBlocks() + /*zone map*/1 + /*super block*/1; //todo: support multiple inode maps blocks and zone maps blocks
+	uint32_t block = /*offset because root dir inode is 1*/1 * ((m_config->ZoneSize()) / (m_config->BlockSize())) + m_config->CalculateAlignedNumBlocks(/*inode map*/m_config->NumInodeMapBlocks() + /*inode entries*/m_config->NumInodeEntryBlocks() + /*zone map*/m_config->NumZoneMapBlocks() + /*super block*/1); //todo: support multiple inode maps blocks and zone maps blocks
 	std::cout << "root inode no: " << inode.InodeNo() << "\n";
 	std::cout << "root inode first block no: " << block << "\n";
 	std::cout << "root inode zone_size: " << m_config->ZoneSize() << "\n";

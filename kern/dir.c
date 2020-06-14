@@ -12,12 +12,12 @@ static size_t aufs_dir_offset(size_t idx)
 	return idx * sizeof(struct aufs_disk_dir_entry);
 }
 
-static size_t aufs_dir_pages(struct inode *inode)
-{
-	size_t size = aufs_dir_offset(inode->i_size);
+// static size_t aufs_dir_pages(struct inode *inode)
+// {
+// 	size_t size = aufs_dir_offset(inode->i_size);
 
-	return (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
-}
+// 	return (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+// }
 
 static size_t aufs_dir_entry_page(size_t idx)
 {
@@ -30,15 +30,15 @@ static inline size_t aufs_dir_entry_offset(size_t idx)
 		   (aufs_dir_entry_page(idx) << PAGE_SHIFT);
 }
 
-static struct page *aufs_get_page(struct inode *inode, size_t n)
-{
-	struct address_space *mapping = inode->i_mapping;
-	struct page *page = read_mapping_page(mapping, n, NULL);
+// static struct page *aufs_get_page(struct inode *inode, size_t n)
+// {
+// 	struct address_space *mapping = inode->i_mapping;
+// 	struct page *page = read_mapping_page(mapping, n, NULL);
 
-	if (!IS_ERR(page))
-		kmap(page);
-	return page;
-}
+// 	if (!IS_ERR(page))
+// 		kmap(page);
+// 	return page;
+// }
 
 static void aufs_put_page(struct page *page)
 {
@@ -46,15 +46,15 @@ static void aufs_put_page(struct page *page)
 	put_page(page);
 }
 
-static int aufs_dir_emit(struct dir_context *ctx,
-						 struct aufs_disk_dir_entry *de)
-{
-	unsigned type = DT_UNKNOWN;
-	unsigned len = strlen(de->dde_name);
-	size_t ino = be32_to_cpu(de->dde_inode);
+// static int aufs_dir_emit(struct dir_context *ctx,
+// 						 struct aufs_disk_dir_entry *de)
+// {
+// 	unsigned type = DT_UNKNOWN;
+// 	unsigned len = strlen(de->dde_name);
+// 	size_t ino = be32_to_cpu(de->dde_inode);
 
-	return dir_emit(ctx, de->dde_name, len, ino, type);
-}
+// 	return dir_emit(ctx, de->dde_name, len, ino, type);
+// }
 
 static inline void *minix_next_entry(void *de) //todo: assimilate in terms of func name
 {
@@ -124,8 +124,8 @@ struct aufs_disk_dir_entry *minix_find_entry(struct dentry *dentry, struct page 
 	const char *name = dentry->d_name.name;
 	int namelen = dentry->d_name.len;
 	struct inode *dir = d_inode(dentry->d_parent);
-	struct super_block *sb = dir->i_sb;
-	struct aufs_super_block *sbi = AUFS_SB(sb);
+	//struct super_block *sb = dir->i_sb;
+	//struct aufs_super_block *sbi = AUFS_SB(sb);
 	unsigned long n;
 	unsigned long npages = dir_pages(dir);
 	struct page *page = NULL;
@@ -275,46 +275,46 @@ fail:
 	return err;
 }
 
-static int aufs_iterate(struct inode *inode, struct dir_context *ctx)
-{
-	size_t pages = aufs_dir_pages(inode);
-	size_t pidx = aufs_dir_entry_page(ctx->pos);
-	size_t off = aufs_dir_entry_offset(ctx->pos);
+// static int aufs_iterate(struct inode *inode, struct dir_context *ctx)
+// {
+// 	size_t pages = aufs_dir_pages(inode);
+// 	size_t pidx = aufs_dir_entry_page(ctx->pos);
+// 	size_t off = aufs_dir_entry_offset(ctx->pos);
 
-	for (; pidx < pages; ++pidx, off = 0)
-	{
-		struct page *page = aufs_get_page(inode, pidx);
-		struct aufs_disk_dir_entry *de;
-		char *kaddr;
+// 	for (; pidx < pages; ++pidx, off = 0)
+// 	{
+// 		struct page *page = aufs_get_page(inode, pidx);
+// 		struct aufs_disk_dir_entry *de;
+// 		char *kaddr;
 
-		if (IS_ERR(page))
-		{
-			pr_err("cannot access page %lu in %lu", pidx,
-				   (unsigned long)inode->i_ino);
-			return PTR_ERR(page);
-		}
+// 		if (IS_ERR(page))
+// 		{
+// 			pr_err("cannot access page %lu in %lu", pidx,
+// 				   (unsigned long)inode->i_ino);
+// 			return PTR_ERR(page);
+// 		}
 
-		kaddr = page_address(page);
-		de = (struct aufs_disk_dir_entry *)(kaddr + off);
-		while (off < PAGE_SIZE && ctx->pos < inode->i_size)
-		{
-			if (!aufs_dir_emit(ctx, de))
-			{
-				aufs_put_page(page);
-				return 0;
-			}
-			++ctx->pos;
-			++de;
-		}
-		aufs_put_page(page);
-	}
-	return 0;
-}
+// 		kaddr = page_address(page);
+// 		de = (struct aufs_disk_dir_entry *)(kaddr + off);
+// 		while (off < PAGE_SIZE && ctx->pos < inode->i_size)
+// 		{
+// 			if (!aufs_dir_emit(ctx, de))
+// 			{
+// 				aufs_put_page(page);
+// 				return 0;
+// 			}
+// 			++ctx->pos;
+// 			++de;
+// 		}
+// 		aufs_put_page(page);
+// 	}
+// 	return 0;
+// }
 
 static int minix_readdir(struct file *file, struct dir_context *ctx)
 {
 	struct inode *inode = file_inode(file);
-	struct super_block *sb = inode->i_sb;
+	//struct super_block *sb = inode->i_sb;
 	unsigned long npages = dir_pages(inode);
 	unsigned long pos = ctx->pos;
 	unsigned offset;
@@ -362,10 +362,10 @@ static int minix_readdir(struct file *file, struct dir_context *ctx)
 	return 0;
 }
 
-static int aufs_readdir(struct file *file, struct dir_context *ctx)
-{
-	return aufs_iterate(file_inode(file), ctx);
-}
+// static int aufs_readdir(struct file *file, struct dir_context *ctx)
+// {
+// 	return aufs_iterate(file_inode(file), ctx);
+// }
 
 const struct file_operations aufs_dir_ops = {
 	.llseek = generic_file_llseek,
@@ -390,8 +390,8 @@ ino_t minix_inode_by_name(struct dentry *dentry)
 
 	if (de)
 	{
-		struct address_space *mapping = page->mapping;
-		struct inode *inode = mapping->host;
+		//struct address_space *mapping = page->mapping;
+		//struct inode *inode = mapping->host;
 
 		res = ((struct aufs_disk_dir_entry *)de)->dde_inode; //todo: propagate: covert according to endian
 
@@ -400,56 +400,56 @@ ino_t minix_inode_by_name(struct dentry *dentry)
 	return res;
 }
 
-static int aufs_match(struct dir_context *ctx, const char *name, int len,
-					  loff_t off, u64 ino, unsigned type)
-{
-	struct aufs_filename_match *match = (struct aufs_filename_match *)ctx;
+// static int aufs_match(struct dir_context *ctx, const char *name, int len,
+// 					  loff_t off, u64 ino, unsigned type)
+// {
+// 	struct aufs_filename_match *match = (struct aufs_filename_match *)ctx;
 
-	if (len != match->len)
-		return 0;
+// 	if (len != match->len)
+// 		return 0;
 
-	if (memcmp(match->name, name, len) == 0)
-	{
-		match->ino = ino;
-		return 1;
-	}
-	return 0;
-}
+// 	if (memcmp(match->name, name, len) == 0)
+// 	{
+// 		match->ino = ino;
+// 		return 1;
+// 	}
+// 	return 0;
+// }
 
-static ino_t aufs_inode_by_name(struct inode *dir, struct qstr *child)
-{
-	struct aufs_filename_match match = {
-		{&aufs_match, 0}, 0, child->name, child->len};
+// static ino_t aufs_inode_by_name(struct inode *dir, struct qstr *child)
+// {
+// 	struct aufs_filename_match match = {
+// 		{&aufs_match, 0}, 0, child->name, child->len};
 
-	int err = aufs_iterate(dir, &match.ctx);
+// 	int err = aufs_iterate(dir, &match.ctx);
 
-	if (err)
-		pr_err("Cannot find dir entry, error = %d", err);
-	return match.ino;
-}
+// 	if (err)
+// 		pr_err("Cannot find dir entry, error = %d", err);
+// 	return match.ino;
+// }
 
-static struct dentry *aufs_lookup(struct inode *dir, struct dentry *dentry,
-								  unsigned flags) //todo: assimilate in terms of func name minix_lookup
-{
-	struct inode *inode = NULL;
-	ino_t ino;
+// static struct dentry *aufs_lookup(struct inode *dir, struct dentry *dentry,
+// 								  unsigned flags) //todo: assimilate in terms of func name minix_lookup
+// {
+// 	struct inode *inode = NULL;
+// 	ino_t ino;
 
-	if (dentry->d_name.len >= AUFS_NAME_LEN)
-		return ERR_PTR(-ENAMETOOLONG);
+// 	if (dentry->d_name.len >= AUFS_NAME_LEN)
+// 		return ERR_PTR(-ENAMETOOLONG);
 
-	ino = aufs_inode_by_name(dir, &dentry->d_name);
-	if (ino)
-	{
-		inode = aufs_inode_get(dir->i_sb, ino);
-		if (IS_ERR(inode))
-		{
-			pr_err("Cannot read inode %lu", (unsigned long)ino);
-			return ERR_PTR(PTR_ERR(inode));
-		}
-		d_add(dentry, inode);
-	}
-	return NULL;
-}
+// 	ino = aufs_inode_by_name(dir, &dentry->d_name);
+// 	if (ino)
+// 	{
+// 		inode = aufs_inode_get(dir->i_sb, ino);
+// 		if (IS_ERR(inode))
+// 		{
+// 			pr_err("Cannot read inode %lu", (unsigned long)ino);
+// 			return ERR_PTR(PTR_ERR(inode));
+// 		}
+// 		d_add(dentry, inode);
+// 	}
+// 	return NULL;
+// }
 
 const struct inode_operations aufs_dir_inode_ops = {
 	.lookup = minix_lookup,

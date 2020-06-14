@@ -6,6 +6,11 @@
 
 static DEFINE_SPINLOCK(bitmap_lock);
 
+inline unsigned long integer_round_up_division(unsigned long dividend, unsigned long divisor)
+{
+	return (dividend+divisor-1)/divisor;
+}
+
 int aufs_new_zone(struct inode *inode) //return the block id of the new zone
 {									   //todo: originally need to memset 0 after new block (see itree_common.c. alloc_branch()). move that to block free
 	struct aufs_super_block *sbi = AUFS_SB(inode->i_sb);
@@ -24,12 +29,12 @@ int aufs_new_zone(struct inode *inode) //return the block id of the new zone
 			minix_set_bit(j, bh->b_data);
 			spin_unlock(&bitmap_lock);
 			mark_buffer_dirty(bh);
-			j += i * bits_per_block * (sbi->asb_blocks_per_zone);//todo: propagate block size per zone map bit //todo: add bitmap to disk
+			j += i * bits_per_block;//todo: propagate block size per zone map bit //todo: add bitmap to disk
 			if (j < 0 /*|| j >= sbi->s_nzones*/) //todo: add s_nzones to super block //todo: add bitmap to disk
 				break;
 
-			printk("aufs_new_zone block successfully gained id %d. (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks) %d\n", j, (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks));
-			return j* (sbi->asb_blocks_per_zone)+(1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks + 1* (sbi->asb_blocks_per_zone));//bitmap numbering starts from the data block region (root inode 1 returns 1+68, etc.)
+			printk("aufs_new_zone block successfully gained id %d. (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks) %ld\n", j, (1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks));
+			return j* (sbi->asb_blocks_per_zone)/*converting zone index to block index*/+(integer_round_up_division(1 + sbi->asb_inode_map_blocks + sbi->asb_zone_map_blocks + sbi->asb_inode_blocks + 1* (sbi->asb_blocks_per_zone),sbi->asb_alignment_num_blocks)*sbi->asb_alignment_num_blocks);//bitmap numbering starts from the data block region (root inode 1 returns 1+68, etc.)
 		}
 		spin_unlock(&bitmap_lock);
 	}
@@ -119,8 +124,7 @@ struct aufs_disk_inode *
 minix_V2_raw_inode(struct super_block *sb, ino_t ino, struct buffer_head **bh)
 {
 	int block;
-	struct aufs_super_block *sbi = AUFS_SB(sb);
-	struct aufs_disk_inode *p;
+	struct aufs_super_block *sbi = AUFS_SB(sb);\
 	int offset;
 	*bh = NULL;
 	if (!ino /*|| ino > sbi->s_ninodes*/)

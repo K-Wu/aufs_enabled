@@ -25,6 +25,7 @@ struct aufs_disk_super_block
 	__be32 dsb_inode_blocks;
 	__be32 dsb_inode_map_blocks;
 	__be32 dsb_zone_map_blocks;
+	__be32 dsb_alignment_num_blocks;
 };
 
 struct aufs_disk_inode
@@ -58,6 +59,7 @@ struct aufs_super_block
 	unsigned long asb_inode_map_blocks;
 	unsigned long asb_zone_map_blocks;
 	unsigned long asb_blocks_per_zone; //todo: assert unsigned long is 32 bit
+	unsigned long asb_alignment_num_blocks;
 	struct buffer_head **s_zmap;
 	struct buffer_head **s_imap;
 	struct buffer_head *s_sbh;

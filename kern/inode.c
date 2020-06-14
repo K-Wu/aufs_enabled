@@ -12,7 +12,8 @@ static int aufs_get_block(struct inode *inode, sector_t iblock,
 {//create is 1 iff during a block_write_full_page and 0 iff during a block_read_full_page
 	
 	#ifdef MULTI_BLOCK_PTR_SCHEME
-	uint32_t aufs_block_size = AUFS_SB(inode->i_sb)->asb_zone_size;
+	uint32_t block_idx, block_offset;
+	uint32_t aufs_zone_size = AUFS_SB(inode->i_sb)->asb_zone_size;
 	uint32_t block_size_bits = ilog2(bh_result->b_size);
 	printk("warning: block_size_bits %d\n",block_size_bits);
 	if (bh_result->b_size!=BLOCK_SIZE){
@@ -21,26 +22,31 @@ static int aufs_get_block(struct inode *inode, sector_t iblock,
 	else{
 		printk("warning: bh_result->b_size(%ld)==BLOCK_SIZE(%d)\n",bh_result->b_size,BLOCK_SIZE);
 	}
-	if (aufs_block_size<(bh_result->b_size)){
-		printk("error: aufs_block_size < BLOCK_SIZE\n");
+	if (aufs_zone_size<(bh_result->b_size)){
+		printk("error: aufs_zone_size < BLOCK_SIZE\n");
 		return -EIO;
 	}
-	if ((aufs_block_size>(bh_result->b_size)) &&(aufs_block_size%(bh_result->b_size)!=0)){
-		printk("error: aufs_block_size is not a multiple of BLOCK_SIZE\n");
+	if ((aufs_zone_size>(bh_result->b_size)) &&(aufs_zone_size%(bh_result->b_size)!=0)){
+		printk("error: aufs_zone_size is not a multiple of BLOCK_SIZE\n");
 		return -EIO;
 	}
 	
-	uint32_t block_idx = (iblock)/(aufs_block_size/(bh_result->b_size));
-	uint32_t block_offset = iblock%(aufs_block_size/(bh_result->b_size));
+	block_idx = (iblock)/(aufs_zone_size/(bh_result->b_size));
+	block_offset = iblock%(aufs_zone_size/(bh_result->b_size));
 	
-	printk("aufs_get_block inode %d, iblock %lld\n",inode->i_ino,iblock);
+	printk("aufs_get_block inode %ld, iblock %lld\n",inode->i_ino,iblock);
 	
-	
+	//todo: check here if hit the ai_zone_ptr length limit.
 	//todo: determine where the block size is used. some place need to be switch to zone size
 	if (!(AUFS_INODE(inode)->ai_zone_ptr[block_idx]))//create
 	{
-		printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
-		AUFS_INODE(inode)->ai_zone_ptr[block_idx] = aufs_new_zone(inode);
+		if (block_idx<ZONE_PTR_IN_INODE_NUM){
+			printk("aufs_new_zone allocating for inode no %lu\n",inode->i_ino);
+			AUFS_INODE(inode)->ai_zone_ptr[block_idx] = aufs_new_zone(inode);
+		}
+		else{
+			return -EIO;
+		}
 	}
 	map_bh(bh_result, inode->i_sb, block_offset + AUFS_INODE(inode)->ai_zone_ptr[block_idx]);
 
